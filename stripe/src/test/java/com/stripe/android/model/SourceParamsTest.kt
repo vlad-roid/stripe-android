@@ -1,10 +1,10 @@
 package com.stripe.android.model
 
 import com.stripe.android.CardNumberFixtures.VISA_NO_SPACES
+import org.json.JSONException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import org.json.JSONException
 
 /**
  * Test class for [SourceParams].
@@ -57,7 +57,8 @@ class SourceParamsTest {
             "aud",
             "Jane Tester",
             "jane@test.com",
-            RETURN_URL)
+            RETURN_URL
+        )
 
         assertEquals(Source.SourceType.ALIPAY, params.type)
         assertEquals(1000L, params.amount)
@@ -94,7 +95,8 @@ class SourceParamsTest {
             "Stripe",
             "return/url/3000",
             "descriptor",
-            "en")
+            "en"
+        )
 
         assertEquals(Source.SourceType.BANCONTACT, params.type)
         assertEquals(Source.EURO, params.currency)
@@ -114,7 +116,8 @@ class SourceParamsTest {
             "Stripe",
             "return/url/3000",
             "descriptor",
-            "en")
+            "en"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.BANCONTACT,
@@ -137,7 +140,8 @@ class SourceParamsTest {
             1000L,
             "Stripe",
             "return/url/3000", null,
-            "en")
+            "en"
+        )
 
         val apiMap = params.apiParameterMap
         requireNotNull(apiMap)
@@ -151,7 +155,8 @@ class SourceParamsTest {
             1000L,
             "Stripe",
             "return/url/3000",
-            "descriptor", null)
+            "descriptor", null
+        )
 
         val apiMap = params.apiParameterMap
         requireNotNull(apiMap)
@@ -164,7 +169,8 @@ class SourceParamsTest {
         val params = SourceParams.createBancontactParams(
             1000L,
             "Stripe",
-            "return/url/3000", null, null)
+            "return/url/3000", null, null
+        )
 
         assertNull(params.apiParameterMap)
     }
@@ -229,7 +235,8 @@ class SourceParamsTest {
     @Throws(JSONException::class)
     fun createCardParamsFromGooglePay_withNoBillingAddress() {
         val createdParams = SourceParams.createCardParamsFromGooglePay(
-            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_NO_BILLING_ADDRESS)
+            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_NO_BILLING_ADDRESS
+        )
         val expectedParams = SourceParams
             .createSourceFromTokenParams("tok_1F4ACMCRMbs6FrXf6fPqLnN7")
             .setOwner(SourceParams.OwnerParams())
@@ -240,7 +247,8 @@ class SourceParamsTest {
     @Throws(JSONException::class)
     fun createCardParamsFromGooglePay_withFullBillingAddress() {
         val createdParams = SourceParams.createCardParamsFromGooglePay(
-            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_FULL_BILLING_ADDRESS)
+            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_FULL_BILLING_ADDRESS
+        )
 
         val ownerParams = SourceParams.OwnerParams(
             email = "stripe@example.com",
@@ -267,7 +275,8 @@ class SourceParamsTest {
             150L,
             "Stripe",
             RETURN_URL,
-            "stripe descriptor")
+            "stripe descriptor"
+        )
 
         assertEquals(Source.SourceType.EPS, params.type)
         assertEquals(Source.EURO, params.currency)
@@ -284,7 +293,8 @@ class SourceParamsTest {
             150L,
             "Stripe",
             RETURN_URL,
-            "stripe descriptor")
+            "stripe descriptor"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.EPS,
@@ -303,7 +313,8 @@ class SourceParamsTest {
         val params = SourceParams.createEPSParams(
             150L,
             "Stripe",
-            RETURN_URL, null)
+            RETURN_URL, null
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.EPS,
@@ -322,7 +333,8 @@ class SourceParamsTest {
             150L,
             "Stripe",
             RETURN_URL,
-            "stripe descriptor")
+            "stripe descriptor"
+        )
 
         assertEquals(Source.SourceType.GIROPAY, params.type)
         assertEquals(Source.EURO, params.currency)
@@ -342,7 +354,8 @@ class SourceParamsTest {
             150L,
             "Stripe",
             RETURN_URL,
-            "stripe descriptor")
+            "stripe descriptor"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.GIROPAY,
@@ -367,7 +380,8 @@ class SourceParamsTest {
         val params = SourceParams.createGiropayParams(
             150L,
             "Stripe",
-            RETURN_URL, null)
+            RETURN_URL, null
+        )
 
         assertEquals(Source.SourceType.GIROPAY, params.type)
         assertEquals(Source.EURO, params.currency)
@@ -408,7 +422,8 @@ class SourceParamsTest {
             "Default Name",
             RETURN_URL,
             "something you bought",
-            "SVB")
+            "SVB"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.IDEAL,
@@ -432,7 +447,8 @@ class SourceParamsTest {
             "eur",
             "Jane Tester",
             "jane@test.com",
-            RETURN_URL)
+            RETURN_URL
+        )
 
         assertEquals(Source.SourceType.P24, params.type)
         assertEquals(1000L, params.amount)
@@ -442,8 +458,10 @@ class SourceParamsTest {
         assertEquals("Jane Tester", owner.name)
         assertEquals("jane@test.com", owner.email)
 
-        assertEquals(RETURN_URL,
-            params.returnUrl)
+        assertEquals(
+            RETURN_URL,
+            params.returnUrl
+        )
     }
 
     @Test
@@ -452,7 +470,8 @@ class SourceParamsTest {
             1000L,
             "eur", null,
             "jane@test.com",
-            RETURN_URL)
+            RETURN_URL
+        )
 
         assertEquals(Source.SourceType.P24, params.type)
         assertEquals(1000L, params.amount)
@@ -462,8 +481,10 @@ class SourceParamsTest {
         assertNull(owner.name)
         assertEquals("jane@test.com", owner.email)
 
-        assertEquals(RETURN_URL,
-            params.returnUrl)
+        assertEquals(
+            RETURN_URL,
+            params.returnUrl
+        )
     }
 
     @Test
@@ -471,13 +492,16 @@ class SourceParamsTest {
         val params = SourceParams.createMultibancoParams(
             150L,
             RETURN_URL,
-            "multibancoholder@stripe.com")
+            "multibancoholder@stripe.com"
+        )
 
         assertEquals(Source.SourceType.MULTIBANCO, params.type)
         assertEquals(Source.EURO, params.currency)
         assertEquals(150L, params.amount)
-        assertEquals(RETURN_URL,
-            params.returnUrl)
+        assertEquals(
+            RETURN_URL,
+            params.returnUrl
+        )
         assertEquals("multibancoholder@stripe.com", params.owner?.email)
     }
 
@@ -486,7 +510,8 @@ class SourceParamsTest {
         val params = SourceParams.createMultibancoParams(
             150L,
             RETURN_URL,
-            "multibancoholder@stripe.com")
+            "multibancoholder@stripe.com"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.MULTIBANCO,
@@ -508,7 +533,8 @@ class SourceParamsTest {
             "44 Fourth Street",
             "Test City",
             "90210",
-            "EI")
+            "EI"
+        )
 
         assertEquals(Source.SourceType.SEPA_DEBIT, params.type)
         assertEquals(Source.EURO, params.currency)
@@ -534,7 +560,8 @@ class SourceParamsTest {
             "44 Fourth Street",
             "Test City",
             "90210",
-            "EI")
+            "EI"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.SEPA_DEBIT,
@@ -583,7 +610,8 @@ class SourceParamsTest {
             50000L,
             RETURN_URL,
             "UK",
-            "a thing you bought")
+            "a thing you bought"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.SOFORT,
@@ -625,7 +653,8 @@ class SourceParamsTest {
             99000L,
             "brl",
             RETURN_URL,
-            "card_id_123")
+            "card_id_123"
+        )
 
         val expectedMap = mapOf(
             "type" to Source.SourceType.THREE_D_SECURE,

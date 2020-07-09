@@ -1,8 +1,8 @@
 package com.stripe.android.model
 
 import androidx.annotation.Size
-import java.util.Currency
 import kotlinx.android.parcel.Parcelize
+import java.util.Currency
 
 /**
  * Model representing a shipping method in the Android SDK.

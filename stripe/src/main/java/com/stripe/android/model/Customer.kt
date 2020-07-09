@@ -31,8 +31,8 @@ data class Customer internal constructor(
 
             return runCatching { JSONObject(jsonString) }
                 .getOrNull()?.let {
-                    fromJson(it)
-                }
+                fromJson(it)
+            }
         }
 
         @JvmStatic

@@ -99,7 +99,8 @@ class PaymentFlowActivity : StripeActivity() {
 
     public override fun onActionSave() {
         if (PaymentFlowPage.ShippingInfo ==
-            paymentFlowPagerAdapter.getPageAt(viewPager.currentItem)) {
+            paymentFlowPagerAdapter.getPageAt(viewPager.currentItem)
+        ) {
             onShippingInfoSubmitted()
         } else {
             onShippingMethodSave()
@@ -120,19 +121,22 @@ class PaymentFlowActivity : StripeActivity() {
     private fun onShippingInfoValidated(shippingMethods: List<ShippingMethod>) {
         viewModel.paymentSessionData.shippingInformation?.let { shippingInfo ->
             viewModel.saveCustomerShippingInformation(shippingInfo)
-                .observe(this, Observer { result ->
-                    result.fold(
-                        onSuccess = {
-                            onShippingInfoSaved(
-                                it.shippingInformation,
-                                shippingMethods
-                            )
-                        },
-                        onFailure = {
-                            showError(it.message.orEmpty())
-                        }
-                    )
-                })
+                .observe(
+                    this,
+                    Observer { result ->
+                        result.fold(
+                            onSuccess = {
+                                onShippingInfoSaved(
+                                    it.shippingInformation,
+                                    shippingMethods
+                                )
+                            },
+                            onFailure = {
+                                showError(it.message.orEmpty())
+                            }
+                        )
+                    }
+                )
         }
     }
 
@@ -188,9 +192,11 @@ class PaymentFlowActivity : StripeActivity() {
             viewPager
                 .findViewById<SelectShippingMethodWidget>(R.id.select_shipping_method_widget)
                 .selectedShippingMethod
-        finishWithData(viewModel.paymentSessionData.copy(
-            shippingMethod = selectedShippingMethod
-        ))
+        finishWithData(
+            viewModel.paymentSessionData.copy(
+                shippingMethod = selectedShippingMethod
+            )
+        )
     }
 
     private fun validateShippingInformation(
@@ -202,17 +208,20 @@ class PaymentFlowActivity : StripeActivity() {
             shippingInfoValidator,
             shippingMethodsFactory,
             shippingInformation
-        ).observe(this, Observer {
-            it.fold(
-                // show shipping methods screen
-                onSuccess = ::onShippingInfoValidated,
+        ).observe(
+            this,
+            Observer {
+                it.fold(
+                    // show shipping methods screen
+                    onSuccess = ::onShippingInfoValidated,
 
-                onFailure = { t ->
-                    // show error on current screen
-                    onShippingInfoError(t.message)
-                }
-            )
-        })
+                    onFailure = { t ->
+                        // show error on current screen
+                        onShippingInfoError(t.message)
+                    }
+                )
+            }
+        )
     }
 
     private fun onShippingInfoError(errorMessage: String?) {
@@ -228,7 +237,8 @@ class PaymentFlowActivity : StripeActivity() {
     }
 
     private fun finishWithData(paymentSessionData: PaymentSessionData) {
-        setResult(Activity.RESULT_OK,
+        setResult(
+            Activity.RESULT_OK,
             Intent().putExtra(EXTRA_PAYMENT_SESSION_DATA, paymentSessionData)
         )
         finish()

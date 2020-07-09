@@ -22,7 +22,8 @@ class PaymentMethodCreateParamsTest {
     @Test
     fun createFromGooglePay_withNoBillingAddress() {
         val createdParams = PaymentMethodCreateParams.createFromGooglePay(
-            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_NO_BILLING_ADDRESS)
+            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_NO_BILLING_ADDRESS
+        )
 
         val expectedParams = PaymentMethodCreateParams.create(
             PaymentMethodCreateParams.Card.create("tok_1F4ACMCRMbs6FrXf6fPqLnN7"),
@@ -35,7 +36,8 @@ class PaymentMethodCreateParamsTest {
     @Test
     fun createFromGooglePay_withFullBillingAddress() {
         val createdParams = PaymentMethodCreateParams.createFromGooglePay(
-            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_FULL_BILLING_ADDRESS)
+            GooglePayFixtures.GOOGLE_PAY_RESULT_WITH_FULL_BILLING_ADDRESS
+        )
 
         val expectedParams = PaymentMethodCreateParams.create(
             PaymentMethodCreateParams.Card.create("tok_1F4VSjBbvEcIpqUbSsbEtBap"),

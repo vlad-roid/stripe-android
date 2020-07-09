@@ -1,8 +1,8 @@
 package com.stripe.android
 
 import android.os.Build
-import java.util.Locale
 import org.json.JSONObject
+import java.util.Locale
 
 internal sealed class RequestHeadersFactory {
     fun create(): Map<String, String> {

@@ -42,6 +42,11 @@ import com.stripe.android.stripe3ds2.transaction.Transaction
 import com.stripe.android.utils.ParcelUtils
 import com.stripe.android.view.AuthActivityStarter
 import com.stripe.android.view.PaymentRelayActivity
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestCoroutineDispatcher
+import kotlinx.coroutines.test.TestCoroutineScope
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,11 +54,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.TestCoroutineDispatcher
-import kotlinx.coroutines.test.TestCoroutineScope
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 @ExperimentalCoroutinesApi
@@ -74,7 +74,8 @@ class StripePaymentControllerTest {
         createController()
     }
     private val analyticsDataFactory = AnalyticsDataFactory(
-        context, ApiKeyFixtures.FAKE_PUBLISHABLE_KEY)
+        context, ApiKeyFixtures.FAKE_PUBLISHABLE_KEY
+    )
     private val host = AuthActivityStarter.Host.create(activity)
 
     private val relayStarterArgsArgumentCaptor: KArgumentCaptor<PaymentRelayStarter.Args> = argumentCaptor()
@@ -151,17 +152,19 @@ class StripePaymentControllerTest {
 
     @Test
     fun handleNextAction_withAmexAnd3ds2_shouldStart3ds2ChallengeFlow() {
-        whenever(threeDs2Service.createTransaction(
-            eq(Stripe3ds2Fingerprint.DirectoryServer.Amex.id),
-            eq(MESSAGE_VERSION),
-            eq(PaymentIntentFixtures.PI_REQUIRES_AMEX_3DS2.isLiveMode),
-            eq(Stripe3ds2Fingerprint.DirectoryServer.Amex.networkName),
-            any(),
-            eq(Stripe3ds2FingerprintTest.DS_RSA_PUBLIC_KEY),
-            eq(PaymentIntentFixtures.KEY_ID),
-            any(),
-            any()
-        ))
+        whenever(
+            threeDs2Service.createTransaction(
+                eq(Stripe3ds2Fingerprint.DirectoryServer.Amex.id),
+                eq(MESSAGE_VERSION),
+                eq(PaymentIntentFixtures.PI_REQUIRES_AMEX_3DS2.isLiveMode),
+                eq(Stripe3ds2Fingerprint.DirectoryServer.Amex.networkName),
+                any(),
+                eq(Stripe3ds2FingerprintTest.DS_RSA_PUBLIC_KEY),
+                eq(PaymentIntentFixtures.KEY_ID),
+                any(),
+                any()
+            )
+        )
             .thenReturn(transaction)
         controller.handleNextAction(
             host,
@@ -240,8 +243,10 @@ class StripePaymentControllerTest {
             AnalyticsEvent.AuthRedirect.toString(),
             analyticsParams[AnalyticsDataFactory.FIELD_EVENT]
         )
-        assertEquals("pi_1EZlvVCRMbs6FrXfKpq2xMmy",
-            analyticsParams[AnalyticsDataFactory.FIELD_INTENT_ID])
+        assertEquals(
+            "pi_1EZlvVCRMbs6FrXfKpq2xMmy",
+            analyticsParams[AnalyticsDataFactory.FIELD_INTENT_ID]
+        )
     }
 
     @Test
@@ -277,7 +282,8 @@ class StripePaymentControllerTest {
 
     @Test
     fun getRequestCode_withParams_correctCodeReturned() {
-        assertEquals(StripePaymentController.PAYMENT_REQUEST_CODE,
+        assertEquals(
+            StripePaymentController.PAYMENT_REQUEST_CODE,
             StripePaymentController.getRequestCode(
                 ConfirmPaymentIntentParams.createWithPaymentMethodId(
                     "pm_123", "client_secret", ""
@@ -492,9 +498,12 @@ class StripePaymentControllerTest {
             transaction,
             AnalyticsRequest.Factory()
         )
-        receiver.cancelled("01", onReceiverCompleted = {
-            onReceiverCompletedCalls++
-        })
+        receiver.cancelled(
+            "01",
+            onReceiverCompleted = {
+                onReceiverCompletedCalls++
+            }
+        )
 
         assertThat(onReceiverCompletedCalls)
             .isEqualTo(1)
@@ -508,8 +517,10 @@ class StripePaymentControllerTest {
             ).toBundle()
         )
         assertNotNull(PaymentIntentFixtures.PI_REQUIRES_MASTERCARD_3DS2.clientSecret)
-        assertEquals(PaymentIntentFixtures.PI_REQUIRES_MASTERCARD_3DS2.clientSecret,
-            StripePaymentController.getClientSecret(data))
+        assertEquals(
+            PaymentIntentFixtures.PI_REQUIRES_MASTERCARD_3DS2.clientSecret,
+            StripePaymentController.getClientSecret(data)
+        )
     }
 
     @Test
@@ -588,8 +599,10 @@ class StripePaymentControllerTest {
         authCallback.onSuccess(Stripe3ds2AuthResultFixtures.ARES_FRICTIONLESS_FLOW)
         verify(paymentRelayStarter)
             .start(relayStarterArgsArgumentCaptor.capture())
-        assertEquals(PaymentIntentFixtures.PI_REQUIRES_MASTERCARD_3DS2,
-            relayStarterArgsArgumentCaptor.firstValue.stripeIntent)
+        assertEquals(
+            PaymentIntentFixtures.PI_REQUIRES_MASTERCARD_3DS2,
+            relayStarterArgsArgumentCaptor.firstValue.stripeIntent
+        )
 
         verify(analyticsRequestExecutor)
             .executeAsync(analyticsRequestArgumentCaptor.capture())
@@ -599,8 +612,10 @@ class StripePaymentControllerTest {
             AnalyticsEvent.Auth3ds2Frictionless.toString(),
             analyticsParams[AnalyticsDataFactory.FIELD_EVENT]
         )
-        assertEquals("pi_1ExkUeAWhjPjYwPiXph9ouXa",
-            analyticsParams[AnalyticsDataFactory.FIELD_INTENT_ID])
+        assertEquals(
+            "pi_1ExkUeAWhjPjYwPiXph9ouXa",
+            analyticsParams[AnalyticsDataFactory.FIELD_INTENT_ID]
+        )
     }
 
     @Test
@@ -613,8 +628,10 @@ class StripePaymentControllerTest {
             paymentRelayStarter = paymentRelayStarter
         )
         authCallback.onSuccess(Stripe3ds2AuthResultFixtures.FALLBACK_REDIRECT_URL)
-        verify(activity).startActivityForResult(intentArgumentCaptor.capture(),
-            eq(StripePaymentController.PAYMENT_REQUEST_CODE))
+        verify(activity).startActivityForResult(
+            intentArgumentCaptor.capture(),
+            eq(StripePaymentController.PAYMENT_REQUEST_CODE)
+        )
         val args: PaymentAuthWebViewStarter.Args = requireNotNull(
             intentArgumentCaptor.firstValue.getParcelableExtra(PaymentAuthWebViewStarter.EXTRA_ARGS)
         )
@@ -644,11 +661,13 @@ class StripePaymentControllerTest {
         )
         authCallback.onSuccess(Stripe3ds2AuthResultFixtures.ERROR)
         verify(paymentRelayStarter).start(relayStarterArgsArgumentCaptor.capture())
-        assertEquals("Error encountered during 3DS2 authentication request. " +
-            "Code: 302, Detail: null, " +
-            "Description: Data could not be decrypted by the receiving system due to " +
-            "technical or other reason., Component: D",
-            relayStarterArgsArgumentCaptor.firstValue.exception?.message)
+        assertEquals(
+            "Error encountered during 3DS2 authentication request. " +
+                "Code: 302, Detail: null, " +
+                "Description: Data could not be decrypted by the receiving system due to " +
+                "technical or other reason., Component: D",
+            relayStarterArgsArgumentCaptor.firstValue.exception?.message
+        )
     }
 
     @Test
@@ -851,9 +870,11 @@ class StripePaymentControllerTest {
         private const val SOURCE_ID = "src_123"
 
         private val CONFIG = PaymentAuthConfig.Builder()
-            .set3ds2Config(PaymentAuthConfig.Stripe3ds2Config.Builder()
-                .setTimeout(5)
-                .build())
+            .set3ds2Config(
+                PaymentAuthConfig.Stripe3ds2Config.Builder()
+                    .setTimeout(5)
+                    .build()
+            )
             .build()
     }
 }

@@ -3,6 +3,7 @@ package com.stripe.android.model
 import com.google.common.truth.Truth.assertThat
 import com.stripe.android.CardNumberFixtures
 import com.stripe.android.model.parsers.CardJsonParser
+import org.json.JSONObject
 import java.util.Calendar
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -11,7 +12,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.json.JSONObject
 
 /**
  * Test class for [Card].
@@ -536,9 +536,12 @@ class CardTest {
 
     @Test
     fun toBuilder_whenChanged_isNotEquals() {
-        assertNotEquals(CardFixtures.CARD, CardFixtures.CARD.toBuilder()
-            .name("some other name")
-            .build())
+        assertNotEquals(
+            CardFixtures.CARD,
+            CardFixtures.CARD.toBuilder()
+                .name("some other name")
+                .build()
+        )
     }
 
     @Test
@@ -657,10 +660,12 @@ class CardTest {
             .cvcCheck("unavailable")
             .customer("customer77")
             .fingerprint("abc123")
-            .metadata(mapOf(
-                "color" to "blue",
-                "animal" to "dog"
-            ))
+            .metadata(
+                mapOf(
+                    "color" to "blue",
+                    "animal" to "dog"
+                )
+            )
             .build()
     }
 }

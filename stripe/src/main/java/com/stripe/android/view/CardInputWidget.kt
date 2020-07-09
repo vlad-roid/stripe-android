@@ -223,7 +223,7 @@ class CardInputWidget @JvmOverloads constructor(
             cvcNumberEditText.shouldShowError = cvcValue == null
             postalCodeEditText.shouldShowError =
                 (postalCodeRequired || usZipCodeRequired) &&
-                    postalCodeEditText.postalCode.isNullOrBlank()
+                postalCodeEditText.postalCode.isNullOrBlank()
 
             // Announce error messages for accessibility
             currentFields
@@ -682,7 +682,8 @@ class CardInputWidget @JvmOverloads constructor(
                     // Avoid reading out "1234 1234 1234 1234"
                     info.hintText = null
                 }
-            })
+            }
+        )
 
         isShowingFullCard = true
 
@@ -694,7 +695,8 @@ class CardInputWidget @JvmOverloads constructor(
             val a = context.theme.obtainStyledAttributes(
                 attrs,
                 R.styleable.CardInputView,
-                0, 0)
+                0, 0
+            )
 
             try {
                 cardBrandView.tintColorInt = a.getColor(
@@ -882,12 +884,14 @@ class CardInputWidget @JvmOverloads constructor(
             null
         }
 
-        startSlideAnimation(listOfNotNull(
-            slideCardLeftAnimation,
-            slideDateLeftAnimation,
-            slideCvcLeftAnimation,
-            slidePostalCodeLeftAnimation
-        ))
+        startSlideAnimation(
+            listOfNotNull(
+                slideCardLeftAnimation,
+                slideDateLeftAnimation,
+                slideCvcLeftAnimation,
+                slidePostalCodeLeftAnimation
+            )
+        )
 
         isShowingFullCard = true
     }
@@ -937,12 +941,14 @@ class CardInputWidget @JvmOverloads constructor(
             null
         }
 
-        startSlideAnimation(listOfNotNull(
-            slideCardRightAnimation,
-            slideDateRightAnimation,
-            slideCvcRightAnimation,
-            slidePostalCodeRightAnimation
-        ))
+        startSlideAnimation(
+            listOfNotNull(
+                slideCardRightAnimation,
+                slideDateRightAnimation,
+                slideCvcRightAnimation,
+                slidePostalCodeRightAnimation
+            )
+        )
 
         isShowingFullCard = false
     }
@@ -1159,7 +1165,8 @@ class CardInputWidget @JvmOverloads constructor(
         }
 
         override fun toString(): String {
-            val touchBufferData = """
+            val touchBufferData =
+                """
                 Touch Buffer Data:
                 CardTouchBufferLimit = $cardTouchBufferLimit
                 DateStartPosition = $dateStartPosition
@@ -1169,7 +1176,8 @@ class CardInputWidget @JvmOverloads constructor(
                 PostalCodeStartPosition = $postalCodeStartPosition
                 """
 
-            val elementSizeData = """
+            val elementSizeData =
+                """
                 TotalLengthInPixels = $totalLengthInPixels
                 CardWidth = $cardWidth
                 HiddenCardWidth = $hiddenCardWidth

@@ -79,18 +79,24 @@ class PaymentMethodsActivity : AppCompatActivity() {
             window.addFlags(it)
         }
 
-        viewModel.snackbarData.observe(this, Observer { snackbarText ->
-            snackbarText?.let {
-                Snackbar.make(viewBinding.coordinator, it, Snackbar.LENGTH_SHORT).show()
+        viewModel.snackbarData.observe(
+            this,
+            Observer { snackbarText ->
+                snackbarText?.let {
+                    Snackbar.make(viewBinding.coordinator, it, Snackbar.LENGTH_SHORT).show()
+                }
             }
-        })
-        viewModel.progressData.observe(this, Observer {
-            viewBinding.progressBar.visibility = if (it) {
-                View.VISIBLE
-            } else {
-                View.GONE
+        )
+        viewModel.progressData.observe(
+            this,
+            Observer {
+                viewBinding.progressBar.visibility = if (it) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
             }
-        })
+        )
 
         setupRecyclerView()
 
@@ -146,7 +152,8 @@ class PaymentMethodsActivity : AppCompatActivity() {
     public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == AddPaymentMethodActivityStarter.REQUEST_CODE &&
-            resultCode == Activity.RESULT_OK) {
+            resultCode == Activity.RESULT_OK
+        ) {
             onPaymentMethodCreated(data)
         }
     }
@@ -192,28 +199,32 @@ class PaymentMethodsActivity : AppCompatActivity() {
     }
 
     private fun fetchCustomerPaymentMethods() {
-        viewModel.getPaymentMethods().observe(this, Observer { result ->
-            result.fold(
-                onSuccess = { adapter.setPaymentMethods(it) },
-                onFailure = {
-                    alertDisplayer.show(
-                        when (it) {
-                            is StripeException -> {
-                                TranslatorManager.getErrorMessageTranslator()
-                                    .translate(it.statusCode, it.message, it.stripeError)
+        viewModel.getPaymentMethods().observe(
+            this,
+            Observer { result ->
+                result.fold(
+                    onSuccess = { adapter.setPaymentMethods(it) },
+                    onFailure = {
+                        alertDisplayer.show(
+                            when (it) {
+                                is StripeException -> {
+                                    TranslatorManager.getErrorMessageTranslator()
+                                        .translate(it.statusCode, it.message, it.stripeError)
+                                }
+                                else -> {
+                                    it.message.orEmpty()
+                                }
                             }
-                            else -> {
-                                it.message.orEmpty()
-                            }
-                        }
-                    )
-                }
-            )
-        })
+                        )
+                    }
+                )
+            }
+        )
     }
 
     private fun finishWithGooglePay() {
-        setResult(Activity.RESULT_OK,
+        setResult(
+            Activity.RESULT_OK,
             Intent().putExtras(
                 PaymentMethodsActivityStarter.Result(useGooglePay = true).toBundle()
             )
@@ -229,10 +240,12 @@ class PaymentMethodsActivity : AppCompatActivity() {
         setResult(
             resultCode,
             Intent().also {
-                it.putExtras(PaymentMethodsActivityStarter.Result(
-                    paymentMethod = paymentMethod,
-                    useGooglePay = args.useGooglePay && paymentMethod == null
-                ).toBundle())
+                it.putExtras(
+                    PaymentMethodsActivityStarter.Result(
+                        paymentMethod = paymentMethod,
+                        useGooglePay = args.useGooglePay && paymentMethod == null
+                    ).toBundle()
+                )
             }
         )
 

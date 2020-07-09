@@ -1,10 +1,10 @@
 package com.stripe.android.model.parsers
 
 import com.stripe.android.model.WeChat
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import org.json.JSONException
 import org.json.JSONObject
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class WeChatJsonParserTest {
 

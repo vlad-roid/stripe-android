@@ -167,8 +167,10 @@ class CardNumberEditText @JvmOverloads constructor(
                     ?: return
 
                 val formattedNumber = cardBrand.formatNumber(spacelessNumber)
-                this.newCursorPosition = updateSelectionIndex(formattedNumber.length,
-                    latestChangeStart, latestInsertionSize)
+                this.newCursorPosition = updateSelectionIndex(
+                    formattedNumber.length,
+                    latestChangeStart, latestInsertionSize
+                )
                 this.formattedNumber = formattedNumber
             }
 

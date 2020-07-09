@@ -36,8 +36,10 @@ object CardFixtures {
         .name(CARD_NAME)
         .build()
 
-    internal val CARD_USD = requireNotNull(CardJsonParser().parse(JSONObject(
-        """
+    internal val CARD_USD = requireNotNull(
+        CardJsonParser().parse(
+            JSONObject(
+                """
         {
             "id": "card_189fi32eZvKYlo2CHK8NPRME",
             "object": "card",
@@ -65,11 +67,15 @@ object CardFixtures {
                 "animal": "dog"
             }
         }
-        """.trimIndent()
-    )))
+                """.trimIndent()
+            )
+        )
+    )
 
-    internal val CARD_EUR = requireNotNull(CardJsonParser().parse(JSONObject(
-        """
+    internal val CARD_EUR = requireNotNull(
+        CardJsonParser().parse(
+            JSONObject(
+                """
         {
             "id": "card_189fi32eZvKYlo2CHK8NPRME",
             "object": "card",
@@ -97,11 +103,15 @@ object CardFixtures {
                 "animal": "dog"
             }
         }
-        """.trimIndent()
-    )))
+                """.trimIndent()
+            )
+        )
+    )
 
-    internal val CARD_GOOGLE_PAY = requireNotNull(CardJsonParser().parse(JSONObject(
-        """
+    internal val CARD_GOOGLE_PAY = requireNotNull(
+        CardJsonParser().parse(
+            JSONObject(
+                """
         {
             "id": "card_189fi32eZvKYlo2CHK8NPRME",
             "object": "card",
@@ -130,8 +140,10 @@ object CardFixtures {
                 "animal": "dog"
             }
         }
-        """.trimIndent()
-    )))
+                """.trimIndent()
+            )
+        )
+    )
 
     internal val CARD_WITH_ATTRIBUTION = Card.Builder()
         .loggingTokens(setOf("CardInputView"))

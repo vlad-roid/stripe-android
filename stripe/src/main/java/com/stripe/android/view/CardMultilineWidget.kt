@@ -158,9 +158,10 @@ class CardMultilineWidget @JvmOverloads constructor(
     val paymentMethodBillingDetailsBuilder: PaymentMethod.BillingDetails.Builder?
         get() = if (shouldShowPostalCode && validateAllFields()) {
             PaymentMethod.BillingDetails.Builder()
-                .setAddress(Address.Builder()
-                    .setPostalCode(postalCodeEditText.postalCode)
-                    .build()
+                .setAddress(
+                    Address.Builder()
+                        .setPostalCode(postalCodeEditText.postalCode)
+                        .build()
                 )
         } else {
             null
@@ -376,7 +377,7 @@ class CardMultilineWidget @JvmOverloads constructor(
         cvcEditText.shouldShowError = !cvcIsValid
         postalCodeEditText.shouldShowError =
             (postalCodeRequired || usZipCodeRequired) &&
-                postalCodeEditText.postalCode.isNullOrBlank()
+            postalCodeEditText.postalCode.isNullOrBlank()
 
         allFields.firstOrNull { it.shouldShowError }?.requestFocus()
 
@@ -526,7 +527,8 @@ class CardMultilineWidget @JvmOverloads constructor(
         val a = context.theme.obtainStyledAttributes(
             attrs,
             R.styleable.CardElement,
-            0, 0)
+            0, 0
+        )
 
         try {
             shouldShowPostalCode = a.getBoolean(
@@ -566,15 +568,18 @@ class CardMultilineWidget @JvmOverloads constructor(
 
     private fun initDeleteEmptyListeners() {
         expiryDateEditText.setDeleteEmptyListener(
-            BackUpFieldDeleteListener(cardNumberEditText))
+            BackUpFieldDeleteListener(cardNumberEditText)
+        )
 
         cvcEditText.setDeleteEmptyListener(
-            BackUpFieldDeleteListener(expiryDateEditText))
+            BackUpFieldDeleteListener(expiryDateEditText)
+        )
 
         // It doesn't matter whether or not the postal code is shown;
         // we can still say where you go when you delete an empty field from it.
         postalCodeEditText.setDeleteEmptyListener(
-            BackUpFieldDeleteListener(cvcEditText))
+            BackUpFieldDeleteListener(cvcEditText)
+        )
     }
 
     private fun initFocusChangeListeners() {

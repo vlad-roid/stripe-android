@@ -4,11 +4,11 @@ import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.switchMap
-import java.util.Calendar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 internal interface FingerprintDataRepository {
     fun refresh()
@@ -40,7 +40,8 @@ internal interface FingerprintDataRepository {
                 coroutineScope.launch {
                     store.get().switchMap { localFingerprintData ->
                         if (localFingerprintData == null ||
-                            localFingerprintData.isExpired(timestampSupplier())) {
+                            localFingerprintData.isExpired(timestampSupplier())
+                        ) {
                             fingerprintRequestExecutor.execute(
                                 request = fingerprintRequestFactory.create(
                                     localFingerprintData

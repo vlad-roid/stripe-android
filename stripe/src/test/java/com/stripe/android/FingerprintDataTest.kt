@@ -1,9 +1,9 @@
 package com.stripe.android
 
 import com.google.common.truth.Truth.assertThat
+import org.junit.Test
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
-import org.junit.Test
 
 class FingerprintDataTest {
 

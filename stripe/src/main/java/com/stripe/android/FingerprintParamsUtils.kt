@@ -15,12 +15,12 @@ internal class FingerprintParamsUtils {
             .firstOrNull { key ->
                 params.containsKey(key)
             }?.let { key ->
-                addFingerprintData(
-                    params,
-                    key,
-                    fingerprintData
-                )
-            } ?: params
+            addFingerprintData(
+                params,
+                key,
+                fingerprintData
+            )
+        } ?: params
     }
 
     private fun addFingerprintData(
@@ -30,8 +30,10 @@ internal class FingerprintParamsUtils {
     ): Map<String, *> {
         return (stripeIntentParams[key] as? Map<*, *>)?.let {
             stripeIntentParams.plus(
-                mapOf(key to it.plus(
-                    fingerprintData?.params.orEmpty())
+                mapOf(
+                    key to it.plus(
+                        fingerprintData?.params.orEmpty()
+                    )
                 )
             )
         } ?: stripeIntentParams

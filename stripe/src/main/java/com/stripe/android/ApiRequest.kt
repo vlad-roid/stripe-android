@@ -2,8 +2,8 @@ package com.stripe.android
 
 import android.os.Parcelable
 import com.stripe.android.exception.InvalidRequestException
-import java.io.UnsupportedEncodingException
 import kotlinx.android.parcel.Parcelize
+import java.io.UnsupportedEncodingException
 
 /**
  * A class representing a Stripe API or Analytics request.

@@ -3,9 +3,9 @@ package com.stripe.android
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.liveData
 import com.stripe.android.model.parsers.FingerprintDataJsonParser
-import java.util.Calendar
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import java.util.Calendar
 
 internal interface FingerprintRequestExecutor {
     fun execute(

@@ -63,8 +63,10 @@ class BecsDebitWidget @JvmOverloads constructor(
             val bsbNumber = viewBinding.bsbEditText.bsb
             val accountNumber = viewBinding.accountNumberEditText.accountNumber
 
-            return !(name.isBlank() || email.isNullOrBlank() || bsbNumber.isNullOrBlank() ||
-                accountNumber.isNullOrBlank())
+            return !(
+                name.isBlank() || email.isNullOrBlank() || bsbNumber.isNullOrBlank() ||
+                    accountNumber.isNullOrBlank()
+                )
         }
 
     init {
@@ -208,7 +210,8 @@ class BecsDebitWidget @JvmOverloads constructor(
             viewBinding.accountNumberEditText.shouldShowError = accountNumber.isNullOrBlank()
 
             if (name.isBlank() || email.isNullOrBlank() || bsbNumber.isNullOrBlank() ||
-                accountNumber.isNullOrBlank()) {
+                accountNumber.isNullOrBlank()
+            ) {
                 return null
             }
 

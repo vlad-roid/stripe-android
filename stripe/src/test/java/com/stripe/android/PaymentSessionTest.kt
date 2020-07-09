@@ -28,14 +28,14 @@ import com.stripe.android.view.PaymentFlowActivity
 import com.stripe.android.view.PaymentFlowActivityStarter
 import com.stripe.android.view.PaymentMethodsActivity
 import com.stripe.android.view.PaymentMethodsActivityStarter
-import kotlin.test.BeforeTest
-import kotlin.test.Test
 import kotlinx.coroutines.Dispatchers
 import org.junit.runner.RunWith
 import org.mockito.Mockito.never
 import org.mockito.Mockito.reset
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 /**
  * Test class for [PaymentSession]
@@ -69,9 +69,12 @@ class PaymentSessionTest {
     fun init_addsPaymentSessionToken_andFetchesCustomer() {
         CustomerSession.instance = customerSession
         createActivity { activity ->
-            val paymentSession = PaymentSession(activity, DEFAULT_CONFIG.copy(
-                shouldPrefetchCustomer = true
-            ))
+            val paymentSession = PaymentSession(
+                activity,
+                DEFAULT_CONFIG.copy(
+                    shouldPrefetchCustomer = true
+                )
+            )
             paymentSession.init(paymentSessionListener)
 
             verify(customerSession).retrieveCurrentCustomer(
@@ -115,7 +118,8 @@ class PaymentSessionTest {
             )
             val handled = paymentSession.handlePaymentData(
                 PaymentMethodsActivityStarter.REQUEST_CODE, RESULT_OK,
-                Intent().putExtras(result.toBundle()))
+                Intent().putExtras(result.toBundle())
+            )
             assertThat(handled).isTrue()
 
             verify(paymentSessionListener)
@@ -140,7 +144,8 @@ class PaymentSessionTest {
             )
             val handled = paymentSession.handlePaymentData(
                 PaymentMethodsActivityStarter.REQUEST_CODE, RESULT_OK,
-                Intent().putExtras(result.toBundle()))
+                Intent().putExtras(result.toBundle())
+            )
             assertThat(handled).isTrue()
 
             verify(paymentSessionListener)
@@ -273,11 +278,13 @@ class PaymentSessionTest {
     fun handlePaymentData_withPaymentMethodsActivityRequestCodeAndCanceledResult_doesNotRetrieveCustomer() {
         createActivity {
             val paymentSession = createPaymentSession(it)
-            assertThat(paymentSession.handlePaymentData(
-                PaymentMethodsActivityStarter.REQUEST_CODE,
-                RESULT_CANCELED,
-                Intent()
-            )).isFalse()
+            assertThat(
+                paymentSession.handlePaymentData(
+                    PaymentMethodsActivityStarter.REQUEST_CODE,
+                    RESULT_CANCELED,
+                    Intent()
+                )
+            ).isFalse()
             verify(customerSession, never()).retrieveCurrentCustomer(any())
         }
     }
@@ -286,8 +293,12 @@ class PaymentSessionTest {
     fun handlePaymentData_withPaymentFlowActivityRequestCodeAndCanceledResult_retrievesCustomer() {
         createActivity {
             val paymentSession = createPaymentSession(it)
-            assertThat(paymentSession.handlePaymentData(PaymentFlowActivityStarter.REQUEST_CODE,
-                RESULT_CANCELED, Intent())).isFalse()
+            assertThat(
+                paymentSession.handlePaymentData(
+                    PaymentFlowActivityStarter.REQUEST_CODE,
+                    RESULT_CANCELED, Intent()
+                )
+            ).isFalse()
             verify(customerSession).retrieveCurrentCustomer(
                 eq(setOf(PaymentSession.PRODUCT_TOKEN)),
                 any()

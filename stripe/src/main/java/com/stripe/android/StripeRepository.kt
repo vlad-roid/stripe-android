@@ -34,48 +34,60 @@ import org.json.JSONObject
  */
 internal interface StripeRepository {
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun confirmPaymentIntent(
         confirmPaymentIntentParams: ConfirmPaymentIntentParams,
         options: ApiRequest.Options,
         expandFields: List<String> = emptyList()
     ): PaymentIntent?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun retrievePaymentIntent(
         clientSecret: String,
         options: ApiRequest.Options,
         expandFields: List<String> = emptyList()
     ): PaymentIntent?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun cancelPaymentIntentSource(
         paymentIntentId: String,
         sourceId: String,
         options: ApiRequest.Options
     ): PaymentIntent?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun confirmSetupIntent(
         confirmSetupIntentParams: ConfirmSetupIntentParams,
         options: ApiRequest.Options,
         expandFields: List<String> = emptyList()
     ): SetupIntent?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun retrieveSetupIntent(
         clientSecret: String,
         options: ApiRequest.Options,
         expandFields: List<String> = emptyList()
     ): SetupIntent?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun cancelSetupIntentSource(
         setupIntentId: String,
         sourceId: String,
@@ -96,15 +108,19 @@ internal interface StripeRepository {
         callback: ApiResultCallback<StripeIntent>
     )
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun createSource(
         sourceParams: SourceParams,
         options: ApiRequest.Options
     ): Source?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun retrieveSource(
         sourceId: String,
         clientSecret: String,
@@ -121,22 +137,28 @@ internal interface StripeRepository {
         callback: ApiResultCallback<Source>
     )
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     fun createPaymentMethod(
         paymentMethodCreateParams: PaymentMethodCreateParams,
         options: ApiRequest.Options
     ): PaymentMethod?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun createToken(
         tokenParams: TokenParams,
         options: ApiRequest.Options
     ): Token?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun addCustomerSource(
         customerId: String,
         publishableKey: String,
@@ -146,8 +168,10 @@ internal interface StripeRepository {
         requestOptions: ApiRequest.Options
     ): Source?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun deleteCustomerSource(
         customerId: String,
         publishableKey: String,
@@ -156,8 +180,10 @@ internal interface StripeRepository {
         requestOptions: ApiRequest.Options
     ): Source?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun attachPaymentMethod(
         customerId: String,
         publishableKey: String,
@@ -166,8 +192,10 @@ internal interface StripeRepository {
         requestOptions: ApiRequest.Options
     ): PaymentMethod?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun detachPaymentMethod(
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -175,8 +203,10 @@ internal interface StripeRepository {
         requestOptions: ApiRequest.Options
     ): PaymentMethod?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun getPaymentMethods(
         listPaymentMethodsParams: ListPaymentMethodsParams,
         publishableKey: String,
@@ -184,8 +214,10 @@ internal interface StripeRepository {
         requestOptions: ApiRequest.Options
     ): List<PaymentMethod>
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun setDefaultCustomerSource(
         customerId: String,
         publishableKey: String,
@@ -195,8 +227,10 @@ internal interface StripeRepository {
         requestOptions: ApiRequest.Options
     ): Customer?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun setCustomerShippingInfo(
         customerId: String,
         publishableKey: String,
@@ -205,17 +239,21 @@ internal interface StripeRepository {
         requestOptions: ApiRequest.Options
     ): Customer?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun retrieveCustomer(
         customerId: String,
         productUsageTokens: Set<String>,
         requestOptions: ApiRequest.Options
     ): Customer?
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
         APIConnectionException::class, APIException::class, CardException::class,
-        JSONException::class)
+        JSONException::class
+    )
     fun retrieveIssuingCardPin(
         cardId: String,
         verificationId: String,
@@ -223,8 +261,10 @@ internal interface StripeRepository {
         ephemeralKeySecret: String
     ): String
 
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class, CardException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class, CardException::class
+    )
     fun updateIssuingCardPin(
         cardId: String,
         newPin: String,

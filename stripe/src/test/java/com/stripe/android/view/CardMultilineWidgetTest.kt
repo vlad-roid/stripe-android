@@ -22,6 +22,9 @@ import com.stripe.android.model.Address
 import com.stripe.android.model.PaymentMethod
 import com.stripe.android.model.PaymentMethodCreateParams
 import com.stripe.android.testharness.ViewTestUtils
+import org.junit.runner.RunWith
+import org.mockito.Mockito.reset
+import org.robolectric.RobolectricTestRunner
 import java.util.Calendar
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -30,9 +33,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.junit.runner.RunWith
-import org.mockito.Mockito.reset
-import org.robolectric.RobolectricTestRunner
 
 /**
  * Test class for [CardMultilineWidget].
@@ -240,9 +240,10 @@ internal class CardMultilineWidgetTest {
                 attribution = ATTRIBUTION
             ),
             PaymentMethod.BillingDetails.Builder()
-                .setAddress(Address.Builder()
-                    .setPostalCode("12345")
-                    .build()
+                .setAddress(
+                    Address.Builder()
+                        .setPostalCode("12345")
+                        .build()
                 )
                 .build()
         )

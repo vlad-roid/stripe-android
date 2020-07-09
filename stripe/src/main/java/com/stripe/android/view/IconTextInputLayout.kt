@@ -53,7 +53,8 @@ class IconTextInputLayout @JvmOverloads constructor(
     private fun adjustBounds() {
         val editText = editText
         if (collapsingTextHelper == null || bounds == null || recalculateMethod == null ||
-            editText == null) {
+            editText == null
+        ) {
             return
         }
 

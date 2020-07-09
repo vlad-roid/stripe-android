@@ -108,7 +108,8 @@ class ExpiryDateEditText @JvmOverloads constructor(
                 var rawNumericInput = inputText.replace("/".toRegex(), "")
 
                 if (rawNumericInput.length == 1 && latestChangeStart == 0 &&
-                    latestInsertionSize == 1) {
+                    latestInsertionSize == 1
+                ) {
                     val first = rawNumericInput[0]
                     if (!(first == '0' || first == '1')) {
                         // If the first digit typed isn't 0 or 1, then it can't be a valid
@@ -120,7 +121,8 @@ class ExpiryDateEditText @JvmOverloads constructor(
                     }
                 } else if (rawNumericInput.length == 2 &&
                     latestChangeStart == 2 &&
-                    latestInsertionSize == 0) {
+                    latestInsertionSize == 0
+                ) {
                     // This allows us to delete past the separator, so that if a user presses
                     // delete when the current string is "12/", the resulting string is "1," since
                     // we pretend that the "/" isn't really there. The case that we also want,
@@ -139,15 +141,18 @@ class ExpiryDateEditText @JvmOverloads constructor(
                     .append(month)
 
                 if (month.length == 2 && latestInsertionSize > 0 &&
-                    !inErrorState || rawNumericInput.length > 2) {
+                    !inErrorState || rawNumericInput.length > 2
+                ) {
                     formattedDateBuilder.append("/")
                 }
 
                 formattedDateBuilder.append(year)
 
                 val formattedDate = formattedDateBuilder.toString()
-                this.newCursorPosition = updateSelectionIndex(formattedDate.length,
-                    latestChangeStart, latestInsertionSize, MAX_INPUT_LENGTH)
+                this.newCursorPosition = updateSelectionIndex(
+                    formattedDate.length,
+                    latestChangeStart, latestInsertionSize, MAX_INPUT_LENGTH
+                )
                 this.formattedDate = formattedDate
             }
 

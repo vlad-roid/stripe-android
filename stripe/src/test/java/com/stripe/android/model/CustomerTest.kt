@@ -2,13 +2,13 @@ package com.stripe.android.model
 
 import com.stripe.android.model.CardTest.Companion.JSON_CARD_USD
 import com.stripe.android.model.parsers.CustomerJsonParser
+import org.json.JSONException
+import org.json.JSONObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.json.JSONException
-import org.json.JSONObject
 
 /**
  * Test class for [Customer] model object.
@@ -72,10 +72,12 @@ class CustomerTest {
             put(SourceFixtures.CUSTOMER_SOURCE_CARD_JSON)
             put(SourceFixtures.ALIPAY_JSON)
             put(JSONObject(JSON_CARD_USD.toString()))
-            put(JSONObject(JSON_CARD_USD.toString()).apply {
-                put("id", "card_id55555")
-                put("tokenization_method", "apple_pay")
-            })
+            put(
+                JSONObject(JSON_CARD_USD.toString()).apply {
+                    put("id", "card_id55555")
+                    put("tokenization_method", "apple_pay")
+                }
+            )
         }
 
         sourcesObject.put("data", sourcesArray)
@@ -84,8 +86,10 @@ class CustomerTest {
         rawJsonCustomer.put("sources", sourcesObject)
 
         // Verify JSON manipulation
-        assertEquals(5,
-            rawJsonCustomer.getJSONObject("sources").getJSONArray("data").length())
+        assertEquals(
+            5,
+            rawJsonCustomer.getJSONObject("sources").getJSONArray("data").length()
+        )
 
         return JSONObject(rawJsonCustomer.toString())
     }

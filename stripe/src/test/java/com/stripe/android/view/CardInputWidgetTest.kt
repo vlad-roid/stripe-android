@@ -27,6 +27,8 @@ import com.stripe.android.testharness.TestFocusChangeListener
 import com.stripe.android.testharness.ViewTestUtils
 import com.stripe.android.view.CardInputWidget.Companion.LOGGING_TOKEN
 import com.stripe.android.view.CardInputWidget.Companion.shouldIconShowBrand
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import java.util.Calendar
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -36,8 +38,6 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 internal class CardInputWidgetTest {
@@ -251,9 +251,11 @@ internal class CardInputWidgetTest {
                     attribution = ATTRIBUTION
                 ),
                 billingDetails = PaymentMethod.BillingDetails.Builder()
-                    .setAddress(Address(
-                        postalCode = POSTAL_CODE_VALUE
-                    ))
+                    .setAddress(
+                        Address(
+                            postalCode = POSTAL_CODE_VALUE
+                        )
+                    )
                     .build()
             )
         assertEquals(expectedPaymentMethodParams, actualPaymentMethodParams)

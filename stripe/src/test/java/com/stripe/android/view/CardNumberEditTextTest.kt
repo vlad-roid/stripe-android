@@ -12,14 +12,14 @@ import com.stripe.android.CardNumberFixtures.VISA_NO_SPACES
 import com.stripe.android.CardNumberFixtures.VISA_WITH_SPACES
 import com.stripe.android.model.CardBrand
 import com.stripe.android.testharness.ViewTestUtils
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 
 /**
  * Test class for [CardNumberEditText].
@@ -345,7 +345,8 @@ class CardNumberEditTextTest {
     fun getCardNumber_whenIncompleteCard_returnsNull() {
         cardNumberEditText.setText(
             DINERS_CLUB_14_WITH_SPACES
-                .substring(0, DINERS_CLUB_14_WITH_SPACES.length - 2))
+                .substring(0, DINERS_CLUB_14_WITH_SPACES.length - 2)
+        )
         assertNull(cardNumberEditText.cardNumber)
     }
 

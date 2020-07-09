@@ -28,10 +28,11 @@ class InvalidRequestExceptionTest {
             requestId = "req_123",
             cause = IllegalArgumentException()
         ).toString()
-        val expected = """
+        val expected =
+            """
             Request-id: req_123
             com.stripe.android.exception.InvalidRequestException
-        """.trimIndent()
+            """.trimIndent()
         assertEquals(expected, actual)
     }
 

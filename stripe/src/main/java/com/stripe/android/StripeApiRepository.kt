@@ -44,15 +44,15 @@ import com.stripe.android.model.parsers.Stripe3ds2AuthResultJsonParser
 import com.stripe.android.model.parsers.StripeFileJsonParser
 import com.stripe.android.model.parsers.TokenJsonParser
 import com.stripe.android.utils.StripeUrlUtils
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.security.Security
-import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.security.Security
+import java.util.Locale
 
 /**
  * An implementation of [StripeRepository] that makes network requests to the Stripe API.
@@ -97,8 +97,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      * @return a [PaymentIntent] reflecting the updated state after applying the parameter
      * provided
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun confirmPaymentIntent(
         confirmPaymentIntentParams: ConfirmPaymentIntentParams,
         options: ApiRequest.Options,
@@ -144,8 +146,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      *
      * @param clientSecret client_secret of the PaymentIntent to retrieve
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun retrievePaymentIntent(
         clientSecret: String,
         options: ApiRequest.Options,
@@ -177,8 +181,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.PaymentIntentCancelSource]
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun cancelPaymentIntentSource(
         paymentIntentId: String,
         sourceId: String,
@@ -211,8 +217,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      * @return a [SetupIntent] reflecting the updated state after applying the parameter
      * provided
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun confirmSetupIntent(
         confirmSetupIntentParams: ConfirmSetupIntentParams,
         options: ApiRequest.Options,
@@ -256,8 +264,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      *
      * @param clientSecret client_secret of the SetupIntent to retrieve
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun retrieveSetupIntent(
         clientSecret: String,
         options: ApiRequest.Options,
@@ -291,8 +301,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.SetupIntentCancelSource]
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun cancelSetupIntentSource(
         setupIntentId: String,
         sourceId: String,
@@ -349,8 +361,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      * @return a [Source] if one could be created from the input params,
      * or `null` if not
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun createSource(
         sourceParams: SourceParams,
         options: ApiRequest.Options
@@ -388,8 +402,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      * @return a [Source] if one could be retrieved for the input params, or `null` if
      * no such Source could be found.
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun retrieveSource(
         sourceId: String,
         clientSecret: String,
@@ -429,8 +445,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.PaymentMethodCreate]
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, APIException::class
+    )
     override fun createPaymentMethod(
         paymentMethodCreateParams: PaymentMethodCreateParams,
         options: ApiRequest.Options
@@ -475,8 +493,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      *
      * @return a [Token] that can be used to perform other operations with this card
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, CardException::class, APIException::class
+    )
     override fun createToken(
         tokenParams: TokenParams,
         options: ApiRequest.Options
@@ -505,8 +525,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.CustomerAddSource]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun addCustomerSource(
         customerId: String,
         publishableKey: String,
@@ -536,8 +558,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.CustomerDeleteSource]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun deleteCustomerSource(
         customerId: String,
         publishableKey: String,
@@ -562,8 +586,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.CustomerAttachPaymentMethod]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun attachPaymentMethod(
         customerId: String,
         publishableKey: String,
@@ -591,8 +617,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.CustomerDetachPaymentMethod]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun detachPaymentMethod(
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -619,8 +647,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      *
      * Analytics event: [AnalyticsEvent.CustomerRetrievePaymentMethods]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun getPaymentMethods(
         listPaymentMethodsParams: ListPaymentMethodsParams,
         publishableKey: String,
@@ -656,8 +686,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.CustomerSetDefaultSource]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun setDefaultCustomerSource(
         customerId: String,
         publishableKey: String,
@@ -688,8 +720,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.CustomerSetShippingInfo]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun setCustomerShippingInfo(
         customerId: String,
         publishableKey: String,
@@ -718,8 +752,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.CustomerRetrieve]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun retrieveCustomer(
         customerId: String,
         productUsageTokens: Set<String>,
@@ -745,8 +781,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.IssuingRetrievePin]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class, JSONException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class, JSONException::class
+    )
     override fun retrieveIssuingCardPin(
         cardId: String,
         verificationId: String,
@@ -771,8 +809,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     /**
      * Analytics event: [AnalyticsEvent.IssuingUpdatePin]
      */
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        AuthenticationException::class, CardException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        AuthenticationException::class, CardException::class
+    )
     override fun updateIssuingCardPin(
         cardId: String,
         newPin: String,
@@ -818,8 +858,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
      * Analytics event: [AnalyticsEvent.Auth3ds2Start]
      */
     @VisibleForTesting
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        CardException::class, AuthenticationException::class, JSONException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        CardException::class, AuthenticationException::class, JSONException::class
+    )
     internal fun start3ds2Auth(
         authParams: Stripe3ds2AuthParams,
         stripeIntentId: String,
@@ -855,8 +897,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     }
 
     @VisibleForTesting
-    @Throws(InvalidRequestException::class, APIConnectionException::class, APIException::class,
-        CardException::class, AuthenticationException::class)
+    @Throws(
+        InvalidRequestException::class, APIConnectionException::class, APIException::class,
+        CardException::class, AuthenticationException::class
+    )
     internal fun complete3ds2Auth(
         sourceId: String,
         requestOptions: ApiRequest.Options
@@ -894,17 +938,21 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
         return StripeFileJsonParser().parse(response.responseJson)
     }
 
-    @Throws(IllegalArgumentException::class, InvalidRequestException::class,
+    @Throws(
+        IllegalArgumentException::class, InvalidRequestException::class,
         APIConnectionException::class, APIException::class,
-        CardException::class, AuthenticationException::class)
+        CardException::class, AuthenticationException::class
+    )
     override fun retrieveObject(url: String, requestOptions: ApiRequest.Options): JSONObject {
         if (!StripeUrlUtils.isStripeUrl(url)) {
             throw IllegalArgumentException("Unrecognized domain: $url")
         }
-        val response = makeApiRequest(apiRequestFactory.createGet(
-            url,
-            requestOptions
-        ))
+        val response = makeApiRequest(
+            apiRequestFactory.createGet(
+                url,
+                requestOptions
+            )
+        )
         return response.responseJson
     }
 
@@ -916,8 +964,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
         return getApiUrl("payment_methods/%s/detach", paymentMethodId)
     }
 
-    @Throws(InvalidRequestException::class, AuthenticationException::class, CardException::class,
-        APIException::class)
+    @Throws(
+        InvalidRequestException::class, AuthenticationException::class, CardException::class,
+        APIException::class
+    )
     private fun handleApiError(response: StripeResponse) {
         val requestId = response.requestId
         val responseCode = response.code
@@ -956,8 +1006,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     }
 
     @VisibleForTesting
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, CardException::class, APIException::class
+    )
     internal fun makeApiRequest(apiRequest: ApiRequest): StripeResponse {
         val dnsCacheData = disableDnsCache()
 
@@ -977,8 +1029,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
     }
 
     @VisibleForTesting
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class, CardException::class, APIException::class
+    )
     internal fun makeFileUploadRequest(fileUploadRequest: FileUploadRequest): StripeResponse {
         val dnsCacheData = disableDnsCache()
 
@@ -1020,8 +1074,10 @@ internal class StripeApiRepository @JvmOverloads internal constructor(
         if (dnsCacheData.first) {
             // value unspecified by implementation
             // DNS_CACHE_TTL_PROPERTY_NAME of -1 = cache forever
-            Security.setProperty(DNS_CACHE_TTL_PROPERTY_NAME,
-                dnsCacheData.second ?: "-1")
+            Security.setProperty(
+                DNS_CACHE_TTL_PROPERTY_NAME,
+                dnsCacheData.second ?: "-1"
+            )
         }
     }
 

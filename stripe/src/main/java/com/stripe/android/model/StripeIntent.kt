@@ -185,8 +185,8 @@ interface StripeIntent : StripeModel {
                     private fun extractReturnUrl(data: String): String? = runCatching {
                         Uri.parse("alipay://url?$data")
                             .getQueryParameter("return_url")?.takeIf {
-                                StripeUrlUtils.isStripeUrl(it)
-                            }
+                            StripeUrlUtils.isStripeUrl(it)
+                        }
                     }.getOrNull()
                 }
             }

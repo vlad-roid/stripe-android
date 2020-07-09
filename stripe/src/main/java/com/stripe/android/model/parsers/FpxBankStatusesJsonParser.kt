@@ -10,8 +10,8 @@ internal class FpxBankStatusesJsonParser : ModelJsonParser<FpxBankStatuses> {
             .takeUnless {
                 it.isNullOrEmpty()
             }?.let {
-                FpxBankStatuses(it as Map<String, Boolean>)
-            } ?: FpxBankStatuses()
+            FpxBankStatuses(it as Map<String, Boolean>)
+        } ?: FpxBankStatuses()
     }
 
     private companion object {

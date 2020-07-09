@@ -7,9 +7,9 @@ import com.stripe.android.model.DateOfBirth
 import com.stripe.android.model.KlarnaSourceParams
 import com.stripe.android.model.SourceOrder
 import com.stripe.android.model.SourceParams
-import kotlin.test.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.Test
 
 @RunWith(RobolectricTestRunner::class)
 class SourceEndToEndTest {
@@ -35,13 +35,15 @@ class SourceEndToEndTest {
         assertThat(items)
             .hasSize(4)
         assertThat(items.first())
-            .isEqualTo(SourceOrder.Item(
-                type = SourceOrder.Item.Type.Sku,
-                amount = 10000,
-                currency = "eur",
-                description = "towel",
-                quantity = 1
-            ))
+            .isEqualTo(
+                SourceOrder.Item(
+                    type = SourceOrder.Item.Type.Sku,
+                    amount = 10000,
+                    currency = "eur",
+                    description = "towel",
+                    quantity = 1
+                )
+            )
     }
 
     @Test

@@ -247,8 +247,8 @@ enum class CardBrand(
             .takeIf {
                 it != -1
             }?.let {
-                groups[it] = spacelessCardNumber.substring(lastUsedIndex)
-            }
+            groups[it] = spacelessCardNumber.substring(lastUsedIndex)
+        }
 
         return groups
     }

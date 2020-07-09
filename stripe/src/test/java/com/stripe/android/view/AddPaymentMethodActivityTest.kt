@@ -30,17 +30,17 @@ import com.stripe.android.exception.StripeException
 import com.stripe.android.model.PaymentMethod
 import com.stripe.android.model.PaymentMethodCreateParamsFixtures
 import com.stripe.android.model.PaymentMethodFixtures
+import org.junit.runner.RunWith
+import org.mockito.Mockito.never
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowAlertDialog
 import java.util.Calendar
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import org.junit.runner.RunWith
-import org.mockito.Mockito.never
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
-import org.robolectric.shadows.ShadowAlertDialog
 
 /**
  * Test class for [AddPaymentMethodActivity].
@@ -101,8 +101,10 @@ class AddPaymentMethodActivityTest {
     }
 
     @Test
-    @Throws(APIException::class, AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class)
+    @Throws(
+        APIException::class, AuthenticationException::class, InvalidRequestException::class,
+        APIConnectionException::class
+    )
     fun softEnterKey_whenDataIsNotValid_doesNotHideKeyboardAndDoesNotFinish() {
         activityScenarioFactory.create<AddPaymentMethodActivity>(
             BASE_CARD_ARGS

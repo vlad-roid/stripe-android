@@ -4,11 +4,11 @@ import android.view.inputmethod.EditorInfo
 import com.nhaarman.mockitokotlin2.mock
 import com.stripe.android.model.PaymentMethodCreateParams
 import com.stripe.android.model.PaymentMethodCreateParamsFixtures
-import kotlin.test.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.verify
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.Test
 
 @RunWith(RobolectricTestRunner::class)
 class AddPaymentMethodCardViewTest {

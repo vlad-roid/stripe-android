@@ -121,9 +121,11 @@ internal class PaymentMethodSwipeCallback(
                     trashIcon.setBounds(0, 0, 0, 0)
                 }
 
-                background.setBounds(itemView.left, itemView.top,
+                background.setBounds(
+                    itemView.left, itemView.top,
                     itemView.left + dX + itemViewStartPadding,
-                    itemView.bottom)
+                    itemView.bottom
+                )
                 background.color = when {
                     transitionFraction <= 0.0F ->
                         swipeStartColor

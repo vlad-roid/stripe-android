@@ -2,11 +2,11 @@ package com.stripe.android
 
 import android.content.Context
 import android.os.Parcelable
-import java.util.Currency
-import java.util.Locale
 import kotlinx.android.parcel.Parcelize
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Currency
+import java.util.Locale
 
 /**
  * A factory for generating [Google Pay JSON request objects](https://developers.google.com/pay/api/android/reference/request-objects)
@@ -58,7 +58,8 @@ class GooglePayJsonFactory constructor(
         return JSONObject()
             .put("apiVersion", API_VERSION)
             .put("apiVersionMinor", API_VERSION_MINOR)
-            .put("allowedPaymentMethods",
+            .put(
+                "allowedPaymentMethods",
                 JSONArray()
                     .put(createCardPaymentMethod(billingAddressParameters))
             )
@@ -103,7 +104,8 @@ class GooglePayJsonFactory constructor(
         return JSONObject()
             .put("apiVersion", API_VERSION)
             .put("apiVersionMinor", API_VERSION_MINOR)
-            .put("allowedPaymentMethods",
+            .put(
+                "allowedPaymentMethods",
                 JSONArray()
                     .put(createCardPaymentMethod(billingAddressParameters))
             )
@@ -112,14 +114,17 @@ class GooglePayJsonFactory constructor(
             .apply {
                 if (shippingAddressParameters?.isRequired == true) {
                     put("shippingAddressRequired", true)
-                    put("shippingAddressParameters",
+                    put(
+                        "shippingAddressParameters",
                         createShippingAddressParameters(shippingAddressParameters)
                     )
                 }
 
                 if (merchantInfo != null && !merchantInfo.merchantName.isNullOrEmpty()) {
-                    put("merchantInfo", JSONObject()
-                        .put("merchantName", merchantInfo.merchantName)
+                    put(
+                        "merchantInfo",
+                        JSONObject()
+                            .put("merchantName", merchantInfo.merchantName)
                     )
                 }
             }
@@ -141,7 +146,8 @@ class GooglePayJsonFactory constructor(
                 }
 
                 transactionInfo.totalPrice?.let {
-                    put("totalPrice",
+                    put(
+                        "totalPrice",
                         PayWithGoogleUtils.getPriceString(
                             it, Currency.getInstance(transactionInfo.currencyCode)
                         )
@@ -179,10 +185,13 @@ class GooglePayJsonFactory constructor(
             .apply {
                 if (billingAddressParameters?.isRequired == true) {
                     put("billingAddressRequired", true)
-                    put("billingAddressParameters",
+                    put(
+                        "billingAddressParameters",
                         JSONObject()
-                            .put("phoneNumberRequired",
-                                billingAddressParameters.isPhoneNumberRequired)
+                            .put(
+                                "phoneNumberRequired",
+                                billingAddressParameters.isPhoneNumberRequired
+                            )
                             .put("format", billingAddressParameters.format.code)
                     )
                 }
@@ -197,11 +206,14 @@ class GooglePayJsonFactory constructor(
     private fun createBaseCardPaymentMethodParams(): JSONObject {
         return JSONObject()
             .put("allowedAuthMethods", JSONArray(ALLOWED_AUTH_METHODS))
-            .put("allowedCardNetworks", JSONArray(
-                DEFAULT_CARD_NETWORKS.plus(
-                    listOf(JCB_CARD_NETWORK).takeIf { isJcbEnabled } ?: emptyList()
+            .put(
+                "allowedCardNetworks",
+                JSONArray(
+                    DEFAULT_CARD_NETWORKS.plus(
+                        listOf(JCB_CARD_NETWORK).takeIf { isJcbEnabled } ?: emptyList()
+                    )
                 )
-            ))
+            )
     }
 
     /**
