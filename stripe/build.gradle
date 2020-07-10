@@ -144,3 +144,7 @@ task ktlintFormat(type: JavaExec, group: "formatting") {
 }
 
 apply from: 'deploy.gradle'
+
+apply plugin: 'com.github.dcendents.android-maven'
+
+group='com.github.stripe'
