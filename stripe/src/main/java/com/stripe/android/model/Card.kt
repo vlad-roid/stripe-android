@@ -17,12 +17,14 @@ data class Card internal constructor(
     /**
      * the [number] of this card
      */
-    val number: String?,
+    @Deprecated("Use CardParams")
+    val number: String? = null,
 
     /**
      * the [cvc] for this card
      */
-    val cvc: String?,
+    @Deprecated("Use CardParams")
+    val cvc: String? = null,
 
     /**
      * Two-digit number representing the card’s expiration month.
@@ -44,14 +46,14 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-name).
      */
-    val name: String?,
+    val name: String? = null,
 
     /**
      * Address line 1 (Street address/PO Box/Company name).
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_line1).
      */
-    val addressLine1: String?,
+    val addressLine1: String? = null,
 
     /**
      * If address_line1 was provided, results of the check: `pass`, `fail`, `unavailable`,
@@ -59,35 +61,35 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_line1_check).
      */
-    val addressLine1Check: String?,
+    val addressLine1Check: String? = null,
 
     /**
      * Address line 2 (Apartment/Suite/Unit/Building).
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_line2).
      */
-    val addressLine2: String?,
+    val addressLine2: String? = null,
 
     /**
      * City/District/Suburb/Town/Village.
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_city).
      */
-    val addressCity: String?,
+    val addressCity: String? = null,
 
     /**
      * State/County/Province/Region.
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_state).
      */
-    val addressState: String?,
+    val addressState: String? = null,
 
     /**
      * ZIP or postal code.
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_zip).
      */
-    val addressZip: String?,
+    val addressZip: String? = null,
 
     /**
      * If `address_zip` was provided, results of the check: `pass`, `fail`, `unavailable`,
@@ -95,14 +97,14 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_zip_check).
      */
-    val addressZipCheck: String?,
+    val addressZipCheck: String? = null,
 
     /**
      * Billing address country, if provided when creating card.
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-address_country).
      */
-    val addressCountry: String?,
+    val addressCountry: String? = null,
 
     /**
      * The last four digits of the card.
@@ -110,7 +112,7 @@ data class Card internal constructor(
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-last4).
      */
     @Size(4)
-    val last4: String?,
+    val last4: String? = null,
 
     /**
      * Card brand. See [CardBrand].
@@ -124,7 +126,7 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-funding).
      */
-    val funding: CardFunding?,
+    val funding: CardFunding? = null,
 
     /**
      * Uniquely identifies this particular card number. You can use this attribute to check whether
@@ -134,7 +136,7 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-fingerprint).
      */
-    val fingerprint: String?,
+    val fingerprint: String? = null,
 
     /**
      * Two-letter ISO code representing the country of the card. You could use this
@@ -142,7 +144,7 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-country).
      */
-    val country: String?,
+    val country: String? = null,
 
     /**
      * Three-letter [ISO code for currency](https://stripe.com/docs/payouts). Only
@@ -151,14 +153,14 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-currency).
      */
-    val currency: String?,
+    val currency: String? = null,
 
     /**
      * The ID of the customer that this card belongs to.
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-customer).
      */
-    val customerId: String?,
+    val customerId: String? = null,
 
     /**
      * If a CVC was provided, results of the check: `pass`, `fail`, `unavailable`,
@@ -166,7 +168,7 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-cvc_check).
      */
-    val cvcCheck: String?,
+    val cvcCheck: String? = null,
 
     /**
      * Unique identifier for the object.
@@ -190,7 +192,7 @@ data class Card internal constructor(
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-metadata).
      */
-    val metadata: Map<String, String>?
+    val metadata: Map<String, String>? = null
 ) : StripeModel, StripePaymentSource, TokenParams(Token.Type.Card, loggingTokens) {
 
     fun toPaymentMethodsParams(): PaymentMethodCreateParams {
@@ -225,6 +227,7 @@ data class Card internal constructor(
     /**
      * @return a [Card.Builder] populated with the fields of this [Card] instance
      */
+    @Deprecated("Use CardParams")
     fun toBuilder(): Builder {
         return Builder(number, expMonth, expYear, cvc)
             .name(name)
@@ -348,7 +351,7 @@ data class Card internal constructor(
                 postalCode = addressZip,
                 country = addressCountry
             )
-        ).toParamMap()
+        ).typeDataParams
 
     /**
      * Builder class for a [Card] model.
@@ -360,6 +363,7 @@ data class Card internal constructor(
      * @param expYear the expiry year
      * @param cvc the card CVC number
      */
+    @Deprecated("Use CardParams")
     class Builder(
         internal val number: String? = null,
         @param:IntRange(from = 1, to = 12) internal val expMonth: Int? = null,
@@ -377,8 +381,10 @@ data class Card internal constructor(
         private var addressCountry: String? = null
         private var brand: CardBrand? = null
         private var funding: CardFunding? = null
+
         @Size(4)
         private var last4: String? = null
+
         private var fingerprint: String? = null
         private var country: String? = null
         private var currency: String? = null
@@ -532,6 +538,7 @@ data class Card internal constructor(
          * @return A Card if one can be made from the JSON, or `null` if one cannot be made
          * or the JSON is invalid.
          */
+        @Deprecated("Will be removed in next major release.")
         @JvmStatic
         fun fromString(jsonString: String): Card? {
             return runCatching {
@@ -541,6 +548,7 @@ data class Card internal constructor(
             }
         }
 
+        @Deprecated("Will be removed in next major release.")
         @JvmStatic
         fun fromJson(jsonObject: JSONObject?): Card? {
             return jsonObject?.let {
@@ -556,6 +564,13 @@ data class Card internal constructor(
          * @param expYear the expiry year
          * @param cvc the CVC code
          */
+        @Deprecated(
+            "Use CardParams",
+            ReplaceWith(
+                "Builder(number, expMonth, expYear, cvc).build()",
+                "com.stripe.android.model.Card.Builder"
+            )
+        )
         @JvmStatic
         fun create(
             number: String? = null,
