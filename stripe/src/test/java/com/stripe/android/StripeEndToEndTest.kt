@@ -31,7 +31,7 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 @ExperimentalCoroutinesApi
-class StripeEndToEndTest {
+internal class StripeEndToEndTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val defaultStripe = Stripe(context, ApiKeyFixtures.DEFAULT_PUBLISHABLE_KEY)
 
@@ -179,10 +179,31 @@ class StripeEndToEndTest {
                     funding = CardFunding.Credit,
                     country = "US",
                     currency = "usd",
-                    cvcCheck = "unchecked",
-                    metadata = emptyMap()
+                    cvcCheck = "unchecked"
                 )
             )
+    }
+
+    @Test
+    fun `Card objects should be populated with the expected CardBrand value`() {
+        assertThat(
+            listOf(
+                CardNumberFixtures.AMEX_NO_SPACES to CardBrand.AmericanExpress,
+                CardNumberFixtures.VISA_NO_SPACES to CardBrand.Visa,
+                CardNumberFixtures.MASTERCARD_NO_SPACES to CardBrand.MasterCard,
+                CardNumberFixtures.JCB_NO_SPACES to CardBrand.JCB,
+                CardNumberFixtures.UNIONPAY_NO_SPACES to CardBrand.UnionPay,
+                CardNumberFixtures.DISCOVER_NO_SPACES to CardBrand.Discover,
+                CardNumberFixtures.DINERS_CLUB_14_NO_SPACES to CardBrand.DinersClub
+            ).all { (cardNumber, cardBrand) ->
+                val token = defaultStripe.createCardTokenSynchronous(
+                    CardParamsFixtures.DEFAULT.copy(
+                        number = cardNumber
+                    )
+                )
+                token?.card?.brand == cardBrand
+            }
+        ).isTrue()
     }
 
     private fun createStripeWithTestScope(

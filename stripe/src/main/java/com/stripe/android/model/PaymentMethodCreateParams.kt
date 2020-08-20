@@ -167,7 +167,8 @@ data class PaymentMethodCreateParams internal constructor(
         Giropay("giropay"),
         Eps("eps"),
         Oxxo("oxxo"),
-        Alipay("alipay")
+        Alipay("alipay"),
+        GrabPay("grabpay"),
     }
 
     @Parcelize
@@ -399,6 +400,29 @@ data class PaymentMethodCreateParams internal constructor(
          * @return params for creating a [PaymentMethod.Type.Card] payment method
          */
         @JvmStatic
+        fun createCard(
+            cardParams: CardParams
+        ): PaymentMethodCreateParams {
+            return create(
+                card = Card(
+                    number = cardParams.number,
+                    expiryMonth = cardParams.expMonth,
+                    expiryYear = cardParams.expYear,
+                    cvc = cardParams.cvc,
+                    attribution = cardParams.attribution
+                ),
+                billingDetails = PaymentMethod.BillingDetails(
+                    name = cardParams.name,
+                    address = cardParams.address
+                ),
+                metadata = cardParams.metadata
+            )
+        }
+
+        /**
+         * @return params for creating a [PaymentMethod.Type.Card] payment method
+         */
+        @JvmStatic
         @JvmOverloads
         fun create(
             card: Card,
@@ -535,6 +559,22 @@ data class PaymentMethodCreateParams internal constructor(
         }
 
         /**
+         * @return params for creating a [PaymentMethod.Type.GrabPay] payment method
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun createGrabPay(
+            billingDetails: PaymentMethod.BillingDetails,
+            metadata: Map<String, String>? = null
+        ): PaymentMethodCreateParams {
+            return PaymentMethodCreateParams(
+                type = Type.GrabPay,
+                billingDetails = billingDetails,
+                metadata = metadata
+            )
+        }
+
+        /**
          * @return params for creating a [PaymentMethod.Type.Eps] payment method
          */
         @JvmStatic
@@ -565,7 +605,7 @@ data class PaymentMethodCreateParams internal constructor(
 
         @JvmSynthetic
         @JvmOverloads
-        internal fun createAlipay(
+        fun createAlipay(
             metadata: Map<String, String>? = null
         ): PaymentMethodCreateParams {
             return PaymentMethodCreateParams(
@@ -582,10 +622,14 @@ data class PaymentMethodCreateParams internal constructor(
         @JvmStatic
         fun createFromGooglePay(googlePayPaymentData: JSONObject): PaymentMethodCreateParams {
             val googlePayResult = GooglePayResult.fromJson(googlePayPaymentData)
-            val tokenId = requireNotNull(googlePayResult.token?.id)
+            val token = googlePayResult.token
+            val tokenId = token?.id.orEmpty()
 
             return create(
-                Card.create(tokenId),
+                Card(
+                    token = tokenId,
+                    attribution = setOfNotNull(token?.card?.tokenizationMethod?.toString())
+                ),
                 PaymentMethod.BillingDetails(
                     address = googlePayResult.address,
                     name = googlePayResult.name,

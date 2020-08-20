@@ -1,39 +1,35 @@
 package com.stripe.android.model
 
+import com.stripe.android.cards.Bin
 import kotlinx.android.parcel.Parcelize
 
 @Parcelize
 internal data class CardMetadata internal constructor(
-    val binPrefix: String,
+    val bin: Bin,
     val accountRanges: List<AccountRange>
 ) : StripeModel {
 
     @Parcelize
     internal data class AccountRange internal constructor(
-        val accountRangeHigh: String,
-        val accountRangeLow: String,
+        val binRange: BinRange,
         val panLength: Int,
-        val brand: String,
-        val country: String
+        val brandInfo: BrandInfo,
+        val country: String? = null
     ) : StripeModel {
+        val brand: CardBrand
+            get() = brandInfo.brand
 
-        /**
-         *  Number matching strategy: Truncate the longer of the two numbers (theirs and our
-         *  bounds) to match the length of the shorter one, then do numerical compare.
-         */
-        internal fun matches(number: String): Boolean {
-            val withinLowRange = if (number.length < this.accountRangeLow.length) {
-                number.toBigDecimal() >= this.accountRangeLow.substring(0, number.length).toBigDecimal()
-            } else {
-                number.substring(0, this.accountRangeLow.length).toBigDecimal() >= this.accountRangeLow.toBigDecimal()
-            }
-
-            val withinHighRange = if (number.length < this.accountRangeHigh.length) {
-                number.toBigDecimal() <= this.accountRangeHigh.substring(0, number.length).toBigDecimal()
-            } else {
-                number.substring(0, this.accountRangeHigh.length).toBigDecimal() <= this.accountRangeHigh.toBigDecimal()
-            }
-            return withinLowRange && withinHighRange
+        internal enum class BrandInfo(
+            val brandName: String,
+            val brand: CardBrand
+        ) {
+            Visa("VISA", CardBrand.Visa),
+            Mastercard("MASTERCARD", CardBrand.MasterCard),
+            AmericanExpress("AMERICAN_EXPRESS", CardBrand.AmericanExpress),
+            JCB("JCB", CardBrand.JCB),
+            DinersClub("DINERS_CLUB", CardBrand.DinersClub),
+            Discover("DISCOVER", CardBrand.Discover),
+            UnionPay("UNIONPAY", CardBrand.UnionPay)
         }
     }
 }

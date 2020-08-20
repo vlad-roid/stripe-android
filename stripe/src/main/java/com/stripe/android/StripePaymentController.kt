@@ -20,7 +20,6 @@ import com.stripe.android.model.Stripe3ds2AuthResult
 import com.stripe.android.model.Stripe3ds2Fingerprint
 import com.stripe.android.model.StripeIntent
 import com.stripe.android.model.StripeIntent.NextActionData.RedirectToUrl
-import com.stripe.android.model.StripeIntent.NextActionData.RedirectToUrl.MobileData.Alipay as AlipayData
 import com.stripe.android.stripe3ds2.init.ui.StripeUiCustomization
 import com.stripe.android.stripe3ds2.service.StripeThreeDs2Service
 import com.stripe.android.stripe3ds2.service.StripeThreeDs2ServiceImpl
@@ -352,14 +351,20 @@ internal class StripePaymentController internal constructor(
         callback: ApiResultCallback<AlipayAuthResult>
     ) : ApiOperation<AlipayAuthResult>(callback = callback) {
         override suspend fun getResult(): AlipayAuthResult {
+            if (intent.paymentMethod?.liveMode == false) {
+                throw IllegalArgumentException("Attempted to authenticate test mode " +
+                    "PaymentIntent with the Alipay SDK.\n" +
+                    "The Alipay SDK does not support test mode payments.")
+            }
+
             val nextActionData = intent.nextActionData
-            if (nextActionData is RedirectToUrl && nextActionData.mobileData is AlipayData) {
+            if (nextActionData is StripeIntent.NextActionData.AlipayRedirect) {
                 val output =
-                    authenticator.onAuthenticationRequest(nextActionData.mobileData.data)
+                    authenticator.onAuthenticationRequest(nextActionData.data)
                 return AlipayAuthResult(
                     when (output[RESULT_FIELD]) {
                         RESULT_CODE_SUCCESS -> {
-                            nextActionData.mobileData.authCompleteUrl?.let {
+                            nextActionData.authCompleteUrl?.let {
                                 runCatching {
                                     apiRepository.retrieveObject(it, requestOptions)
                                 }
@@ -546,6 +551,33 @@ internal class StripePaymentController internal constructor(
                         enableLogging = enableLogging
                     )
                 }
+                /**
+                 * If using the standard confirmation path, handle Alipay the same as
+                 * a standard webview redirect.
+                 * Alipay Native SDK use case is handled by [Stripe.confirmAlipayPayment]
+                 * outside of the standard confirmation path.
+                 */
+                is StripeIntent.NextActionData.AlipayRedirect -> {
+                    analyticsRequestExecutor.executeAsync(
+                        analyticsRequestFactory.create(
+                            analyticsDataFactory.createAuthParams(
+                                AnalyticsEvent.AuthRedirect,
+                                stripeIntent.id.orEmpty()
+                            ),
+                            requestOptions
+                        )
+                    )
+
+                    beginWebAuth(
+                        host,
+                        getRequestCode(stripeIntent),
+                        stripeIntent.clientSecret.orEmpty(),
+                        nextActionData.webViewUrl.toString(),
+                        requestOptions.stripeAccount,
+                        nextActionData.returnUrl,
+                        enableLogging = enableLogging
+                    )
+                }
                 is StripeIntent.NextActionData.DisplayOxxoDetails -> {
                     // TODO(smaskell): add analytics event
                     if (nextActionData.hostedVoucherUrl != null) {
@@ -625,9 +657,7 @@ internal class StripePaymentController internal constructor(
         )
 
         workScope.launch {
-            // call `authenticationRequestParameters` on background thread to avoid StrictMode
-            // DiskReadViolation
-            val areqParams = transaction.authenticationRequestParameters
+            val areqParams = transaction.createAuthenticationRequestParameters()
 
             val timeout = config.stripe3ds2Config.timeout
             val authParams = Stripe3ds2AuthParams(

@@ -16,6 +16,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.stripe.android.exception.APIConnectionException
 import com.stripe.android.exception.InvalidRequestException
 import com.stripe.android.model.BankAccountTokenParamsFixtures
+import com.stripe.android.model.BinFixtures
 import com.stripe.android.model.CardParams
 import com.stripe.android.model.CardParamsFixtures
 import com.stripe.android.model.ConfirmPaymentIntentParams
@@ -32,7 +33,6 @@ import com.stripe.android.model.StripeFileFixtures
 import com.stripe.android.model.StripeFileParams
 import com.stripe.android.model.StripeFilePurpose
 import com.stripe.android.model.TokenFixtures
-import com.stripe.android.view.FpxBank
 import java.net.HttpURLConnection
 import java.net.UnknownHostException
 import java.util.Calendar
@@ -51,12 +51,9 @@ import kotlinx.coroutines.test.runBlockingTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/**
- * Test class for [StripeApiRepository].
- */
 @RunWith(RobolectricTestRunner::class)
 @ExperimentalCoroutinesApi
-class StripeApiRepositoryTest {
+internal class StripeApiRepositoryTest {
     private val testDispatcher = TestCoroutineDispatcher()
 
     private val context: Context = ApplicationProvider.getApplicationContext()
@@ -393,7 +390,7 @@ class StripeApiRepositoryTest {
         verifyFingerprintAndAnalyticsRequests(AnalyticsEvent.PaymentIntentConfirm)
 
         val analyticsRequest = analyticsRequestArgumentCaptor.firstValue
-        assertEquals(PaymentMethod.Type.Card.code, analyticsRequest.params.get("source_type"))
+        assertEquals(PaymentMethod.Type.Card.code, analyticsRequest.params["source_type"])
     }
 
     @Ignore("requires a secret key")
@@ -675,11 +672,8 @@ class StripeApiRepositoryTest {
         val fpxBankStatuses = stripeApiRepository.getFpxBankStatus(
             ApiRequest.Options(ApiKeyFixtures.FPX_PUBLISHABLE_KEY)
         )
-        assertThat(
-            setOf(FpxBank.Hsbc, FpxBank.Bsn).any {
-                fpxBankStatuses.isOnline(it)
-            }
-        ).isTrue()
+        assertThat(fpxBankStatuses.size())
+            .isEqualTo(25)
     }
 
     @Test
@@ -690,11 +684,8 @@ class StripeApiRepositoryTest {
                 stripeAccount = "acct_1234"
             )
         )
-        assertThat(
-            setOf(FpxBank.Hsbc, FpxBank.Bsn).any {
-                fpxBankStatuses.isOnline(it)
-            }
-        ).isTrue()
+        assertThat(fpxBankStatuses.size())
+            .isEqualTo(25)
     }
 
     @Test
@@ -702,11 +693,13 @@ class StripeApiRepositoryTest {
         testDispatcher.runBlockingTest {
             val cardMetadata =
                 stripeApiRepository.getCardMetadata(
-                    "424242",
+                    BinFixtures.VISA,
                     ApiRequest.Options(ApiKeyFixtures.DEFAULT_PUBLISHABLE_KEY)
                 )
-            assertThat(cardMetadata.binPrefix).isEqualTo("424242")
-            assertThat(cardMetadata.accountRanges).isNotEmpty()
+            assertThat(cardMetadata.bin)
+                .isEqualTo(BinFixtures.VISA)
+            assertThat(cardMetadata.accountRanges)
+                .isNotEmpty()
         }
     }
 

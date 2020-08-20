@@ -191,10 +191,14 @@ data class Card internal constructor(
      * storing additional information about the object in a structured format.
      *
      * See [API Reference](https://stripe.com/docs/api/cards/object#card_object-metadata).
+     *
+     * @deprecated Metadata is no longer returned to clients using publishable keys. Retrieve them on your server using your secret key instead.
      */
+    @Deprecated("Metadata is no longer returned to clients using publishable keys. Retrieve them on your server using your secret key instead.")
     val metadata: Map<String, String>? = null
 ) : StripeModel, StripePaymentSource, TokenParams(Token.Type.Card, loggingTokens) {
 
+    @Deprecated("Use PaymentMethodCreateParams#createCard()")
     fun toPaymentMethodsParams(): PaymentMethodCreateParams {
         return PaymentMethodCreateParams.create(
             card = toPaymentMethodParamsCard(),
@@ -215,6 +219,7 @@ data class Card internal constructor(
     /**
      * Use [toPaymentMethodsParams] to include Billing Details
      */
+    @Deprecated("Use PaymentMethodCreateParams#createCard()")
     fun toPaymentMethodParamsCard(): PaymentMethodCreateParams.Card {
         return PaymentMethodCreateParams.Card(
             number = number,
@@ -512,7 +517,6 @@ data class Card internal constructor(
                 cvcCheck = cvcCheck.takeUnless { it.isNullOrBlank() },
                 id = id.takeUnless { it.isNullOrBlank() },
                 tokenizationMethod = tokenizationMethod,
-                metadata = metadata,
                 loggingTokens = loggingTokens.orEmpty()
             )
         }
@@ -580,6 +584,23 @@ data class Card internal constructor(
         ): Card {
             return Builder(number, expMonth, expYear, cvc)
                 .build()
+        }
+
+        /**
+         * See https://stripe.com/docs/api/cards/object#card_object-brand for valid values.
+         */
+        @JvmSynthetic
+        internal fun getCardBrand(brandName: String?): CardBrand {
+            return when (brandName) {
+                "American Express" -> CardBrand.AmericanExpress
+                "Diners Club" -> CardBrand.DinersClub
+                "Discover" -> CardBrand.Discover
+                "JCB" -> CardBrand.JCB
+                "MasterCard" -> CardBrand.MasterCard
+                "UnionPay" -> CardBrand.UnionPay
+                "Visa" -> CardBrand.Visa
+                else -> CardBrand.Unknown
+            }
         }
     }
 }

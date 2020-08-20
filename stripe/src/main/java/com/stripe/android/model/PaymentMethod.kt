@@ -70,7 +70,10 @@ data class PaymentMethod internal constructor(
      * additional information about the object in a structured format.
      *
      * [metadata](https://stripe.com/docs/api/payment_methods/object#payment_method_object-metadata)
+     *
+     * @deprecated Metadata is no longer returned to clients using publishable keys. Retrieve them on your server using your secret key instead.
      */
+    @Deprecated("Metadata is no longer returned to clients using publishable keys. Retrieve them on your server using your secret key instead.")
     @JvmField val metadata: Map<String, String>? = null,
 
     /**
@@ -131,7 +134,8 @@ data class PaymentMethod internal constructor(
         Giropay("giropay", isReusable = false),
         Eps("eps", isReusable = false),
         Oxxo("oxxo", isReusable = false),
-        Alipay("alipay", isReusable = false);
+        Alipay("alipay", isReusable = false),
+        GrabPay("grabpay", isReusable = false);
 
         override fun toString(): String {
             return code
@@ -230,7 +234,6 @@ data class PaymentMethod internal constructor(
                 type = type,
                 billingDetails = billingDetails,
                 customerId = customerId,
-                metadata = metadata,
                 card = card,
                 cardPresent = cardPresent,
                 fpx = fpx,

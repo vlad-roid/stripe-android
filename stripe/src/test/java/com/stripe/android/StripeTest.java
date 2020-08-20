@@ -114,7 +114,7 @@ public class StripeTest {
 
     @Test
     public void constructorShouldFailWithNullPublishableKey() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(NullPointerException.class, () -> {
             //noinspection ConstantConditions
             new Stripe(context, null);
         });
@@ -430,7 +430,6 @@ public class StripeTest {
         assertNotNull(bancontactSource.getRedirect());
         assertEquals("John Doe", bancontactSource.getOwner().getName());
         assertEquals("example://path", bancontactSource.getRedirect().getReturnUrl());
-        assertEquals(metamap, bancontactSource.getMetaData());
     }
 
     @Test
@@ -463,7 +462,6 @@ public class StripeTest {
         assertNull(threeDSource.getSourceTypeModel());
         assertEquals(Source.SourceType.THREE_D_SECURE, threeDSource.getType());
         assertNotNull(threeDSource.getSourceTypeData());
-        assertEquals(metadata, threeDSource.getMetaData());
     }
 
     @Test
@@ -494,7 +492,6 @@ public class StripeTest {
         assertNotNull(giropaySource.getRedirect());
         assertEquals("Mr. X", giropaySource.getOwner().getName());
         assertEquals("example://redirect", giropaySource.getRedirect().getReturnUrl());
-        assertEquals(metamap, giropaySource.getMetaData());
     }
 
     @Test
@@ -557,7 +554,6 @@ public class StripeTest {
         assertEquals("123 Main St", sepaDebitSource.getOwner().getAddress().getLine1());
         assertEquals("EI", sepaDebitSource.getOwner().getAddress().getCountry());
         assertEquals("Sepa Account Holder", sepaDebitSource.getOwner().getName());
-        assertEquals(metamap ,sepaDebitSource.getMetaData());
     }
 
 
@@ -584,7 +580,6 @@ public class StripeTest {
         assertNotNull(sepaDebitSource.getClientSecret());
         assertNotNull(sepaDebitSource.getId());
         assertEquals(Source.SourceType.SEPA_DEBIT, sepaDebitSource.getType());
-        assertEquals(metamap ,sepaDebitSource.getMetaData());
     }
 
     @Test
@@ -622,7 +617,6 @@ public class StripeTest {
         assertEquals("123 Main St", sepaDebitSource.getOwner().getAddress().getLine1());
         assertEquals("EI", sepaDebitSource.getOwner().getAddress().getCountry());
         assertEquals("Sepa Account Holder", sepaDebitSource.getOwner().getName());
-        assertEquals(metamap ,sepaDebitSource.getMetaData());
     }
 
     @Test
@@ -684,7 +678,6 @@ public class StripeTest {
         assertEquals("Bond", idealSource.getOwner().getName());
         assertNotNull(idealSource.getRedirect());
         assertEquals("example://return", idealSource.getRedirect().getReturnUrl());
-        assertEquals(metamap, idealSource.getMetaData());
     }
 
     @Test
@@ -719,7 +712,6 @@ public class StripeTest {
         assertNotNull(idealSource.getRedirect());
         assertEquals(bankName, idealSource.getSourceTypeData().get("bank"));
         assertEquals("example://return", idealSource.getRedirect().getReturnUrl());
-        assertEquals(metamap, idealSource.getMetaData());
     }
 
     @Test
@@ -754,7 +746,6 @@ public class StripeTest {
         assertEquals(bankName, idealSource.getSourceTypeData().get("bank"));
         assertNull(idealSource.getOwner().getName());
         assertEquals("example://return", idealSource.getRedirect().getReturnUrl());
-        assertEquals(metamap, idealSource.getMetaData());
     }
 
     @Test
@@ -783,7 +774,6 @@ public class StripeTest {
         assertEquals(70000L, sofortSource.getAmount().longValue());
         assertNotNull(sofortSource.getRedirect());
         assertEquals("example://return", sofortSource.getRedirect().getReturnUrl());
-        assertEquals(metamap, sofortSource.getMetaData());
     }
 
     @Test
@@ -1118,7 +1108,7 @@ public class StripeTest {
                 createdPaymentMethod.billingDetails);
         assertNotNull(createdPaymentMethod.card);
         assertEquals("4242", createdPaymentMethod.card.last4);
-        assertEquals(metadata, createdPaymentMethod.metadata);
+        assertThat(createdPaymentMethod.metadata).isNull();
 
         verify(analyticsRequestExecutor)
                 .executeAsync(analyticsRequestArgumentCaptor.capture());
