@@ -9,13 +9,13 @@ import com.stripe.android.exception.InvalidRequestException
 import com.stripe.android.exception.RateLimitException
 import com.stripe.android.model.PaymentIntent
 import com.stripe.android.model.PaymentIntentFixtures
-import kotlin.test.Test
+import com.stripe.android.utils.TestUtils.idleLooper
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineDispatcher
-import kotlinx.coroutines.test.TestCoroutineScope
 import org.json.JSONException
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.Test
 
 @RunWith(RobolectricTestRunner::class)
 @ExperimentalCoroutinesApi
@@ -30,6 +30,8 @@ class ApiOperationTest {
             },
             callback
         ).execute()
+        idleLooper()
+
         verify(callback)
             .onSuccess(PaymentIntentFixtures.PI_REQUIRES_3DS1)
     }
@@ -42,6 +44,8 @@ class ApiOperationTest {
             },
             callback
         ).execute()
+        idleLooper()
+
         verify(callback).onError(
             argWhere {
                 (it as? RuntimeException)?.message == "The API operation returned neither a result or exception"
@@ -57,6 +61,8 @@ class ApiOperationTest {
             },
             callback
         ).execute()
+        idleLooper()
+
         verify(callback).onError(isA<APIException>())
     }
 
@@ -68,6 +74,8 @@ class ApiOperationTest {
             },
             callback
         ).execute()
+        idleLooper()
+
         verify(callback).onError(isA<RateLimitException>())
     }
 
@@ -79,6 +87,8 @@ class ApiOperationTest {
             },
             callback
         ).execute()
+        idleLooper()
+
         verify(callback).onError(
             argWhere {
                 (it as? InvalidRequestException)?.message == "Illegal argument!"
@@ -90,7 +100,7 @@ class ApiOperationTest {
         private val resultSupplier: () -> PaymentIntent?,
         callback: ApiResultCallback<PaymentIntent>
     ) : ApiOperation<PaymentIntent>(
-        workScope = TestCoroutineScope(TestCoroutineDispatcher()),
+        workContext = TestCoroutineDispatcher(),
         callback = callback
     ) {
         override suspend fun getResult(): PaymentIntent? = resultSupplier()

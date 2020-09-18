@@ -1,20 +1,12 @@
 package com.stripe.android.cards
 
+import com.stripe.android.model.AccountRange
 import com.stripe.android.model.BinRange
-import com.stripe.android.model.CardMetadata
 
-/**
- * A [CardAccountRangeSource] that uses a local, static source of BIN ranges.
- */
-internal class LocalCardAccountRangeSource : CardAccountRangeSource {
-    override suspend fun getAccountRange(
-        cardNumber: String
-    ): CardMetadata.AccountRange? {
-        return ACCOUNTS
-            .firstOrNull {
-                it.binRange.matches(cardNumber)
-            }
-    }
+internal class DefaultStaticCardAccountRanges : StaticCardAccountRanges {
+    override fun match(
+        cardNumber: CardNumber.Unvalidated
+    ) = ACCOUNTS.firstOrNull { it.binRange.matches(cardNumber) }
 
     internal companion object {
         private val VISA_ACCOUNTS =
@@ -24,10 +16,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                     high = "4999999999999999"
                 )
             ).map {
-                CardMetadata.AccountRange(
+                AccountRange(
                     binRange = it,
                     panLength = 16,
-                    brandInfo = CardMetadata.AccountRange.BrandInfo.Visa
+                    brandInfo = AccountRange.BrandInfo.Visa
                 )
             }
 
@@ -42,10 +34,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                     high = "5599999999999999"
                 )
             ).map {
-                CardMetadata.AccountRange(
+                AccountRange(
                     binRange = it,
                     panLength = 16,
-                    brandInfo = CardMetadata.AccountRange.BrandInfo.Mastercard
+                    brandInfo = AccountRange.BrandInfo.Mastercard
                 )
             }
 
@@ -60,10 +52,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                 high = "379999999999999"
             )
         ).map {
-            CardMetadata.AccountRange(
+            AccountRange(
                 binRange = it,
                 panLength = 15,
-                brandInfo = CardMetadata.AccountRange.BrandInfo.AmericanExpress
+                brandInfo = AccountRange.BrandInfo.AmericanExpress
             )
         }
 
@@ -83,10 +75,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                 high = "6599999999999999"
             )
         ).map {
-            CardMetadata.AccountRange(
+            AccountRange(
                 binRange = it,
                 panLength = 16,
-                brandInfo = CardMetadata.AccountRange.BrandInfo.Discover
+                brandInfo = AccountRange.BrandInfo.Discover
             )
         }
 
@@ -96,10 +88,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                 high = "3589999999999999"
             )
         ).map {
-            CardMetadata.AccountRange(
+            AccountRange(
                 binRange = it,
                 panLength = 16,
-                brandInfo = CardMetadata.AccountRange.BrandInfo.JCB
+                brandInfo = AccountRange.BrandInfo.JCB
             )
         }
 
@@ -114,10 +106,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                 high = "8199999999999999"
             )
         ).map {
-            CardMetadata.AccountRange(
+            AccountRange(
                 binRange = it,
                 panLength = 16,
-                brandInfo = CardMetadata.AccountRange.BrandInfo.UnionPay
+                brandInfo = AccountRange.BrandInfo.UnionPay
             )
         }
 
@@ -137,10 +129,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                 high = "3999999999999999"
             )
         ).map {
-            CardMetadata.AccountRange(
+            AccountRange(
                 binRange = it,
                 panLength = 16,
-                brandInfo = CardMetadata.AccountRange.BrandInfo.DinersClub
+                brandInfo = AccountRange.BrandInfo.DinersClub
             )
         }
 
@@ -150,10 +142,10 @@ internal class LocalCardAccountRangeSource : CardAccountRangeSource {
                 high = "36999999999999"
             )
         ).map {
-            CardMetadata.AccountRange(
+            AccountRange(
                 binRange = it,
                 panLength = 14,
-                brandInfo = CardMetadata.AccountRange.BrandInfo.DinersClub
+                brandInfo = AccountRange.BrandInfo.DinersClub
             )
         }
 

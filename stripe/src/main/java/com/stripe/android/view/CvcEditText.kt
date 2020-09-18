@@ -10,6 +10,7 @@ import android.util.AttributeSet
 import android.view.View
 import com.google.android.material.textfield.TextInputLayout
 import com.stripe.android.R
+import com.stripe.android.cards.Cvc
 import com.stripe.android.model.CardBrand
 
 /**
@@ -24,23 +25,23 @@ open class CvcEditText @JvmOverloads constructor(
     /**
      * The inputted CVC value if valid; otherwise, `null`.
      */
+    @Deprecated("Will be removed in next major release.")
     val cvcValue: String?
         get() {
-            return rawCvcValue.takeIf { isValid }
+            return cvc?.value
         }
 
-    internal val rawCvcValue: String
-        @JvmSynthetic
+    private val unvalidatedCvc: Cvc.Unvalidated
         get() {
-            return fieldText.trim()
+            return Cvc.Unvalidated(fieldText)
+        }
+
+    internal val cvc: Cvc.Validated?
+        get() {
+            return unvalidatedCvc.validate(cardBrand.maxCvcLength)
         }
 
     private var cardBrand: CardBrand = CardBrand.Unknown
-
-    private val isValid: Boolean
-        get() {
-            return cardBrand.isValidCvc(rawCvcValue)
-        }
 
     // invoked when a valid CVC has been entered
     @JvmSynthetic
@@ -59,14 +60,16 @@ open class CvcEditText @JvmOverloads constructor(
             setAutofillHints(View.AUTOFILL_HINT_CREDIT_CARD_SECURITY_CODE)
         }
 
-        addTextChangedListener(object : StripeTextWatcher() {
-            override fun afterTextChanged(s: Editable?) {
-                shouldShowError = false
-                if (cardBrand.isMaxCvc(rawCvcValue)) {
-                    completionCallback()
+        addTextChangedListener(
+            object : StripeTextWatcher() {
+                override fun afterTextChanged(s: Editable?) {
+                    shouldShowError = false
+                    if (cardBrand.isMaxCvc(unvalidatedCvc.normalized)) {
+                        completionCallback()
+                    }
                 }
             }
-        })
+        )
     }
 
     override val accessibilityText: String?

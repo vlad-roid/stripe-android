@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.annotation.LayoutRes
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import com.stripe.android.ObjectBuilder
 import com.stripe.android.PaymentConfiguration
@@ -26,14 +27,12 @@ class PaymentMethodsActivityStarter : ActivityStarter<PaymentMethodsActivity, Ar
     constructor(activity: Activity) : super(
         activity,
         PaymentMethodsActivity::class.java,
-        Args.DEFAULT,
         REQUEST_CODE
     )
 
     constructor(fragment: Fragment) : super(
         fragment,
         PaymentMethodsActivity::class.java,
-        Args.DEFAULT,
         REQUEST_CODE
     )
 
@@ -158,8 +157,6 @@ class PaymentMethodsActivityStarter : ActivityStarter<PaymentMethodsActivity, Ar
         }
 
         internal companion object {
-            internal val DEFAULT = Builder().build()
-
             @JvmSynthetic
             internal fun create(intent: Intent): Args {
                 return requireNotNull(intent.getParcelableExtra(ActivityStarter.Args.EXTRA))
@@ -178,9 +175,7 @@ class PaymentMethodsActivityStarter : ActivityStarter<PaymentMethodsActivity, Ar
         val useGooglePay: Boolean = false
     ) : ActivityStarter.Result {
         override fun toBundle(): Bundle {
-            return Bundle().also {
-                it.putParcelable(ActivityStarter.Result.EXTRA, this)
-            }
+            return bundleOf(ActivityStarter.Result.EXTRA to this)
         }
 
         companion object {

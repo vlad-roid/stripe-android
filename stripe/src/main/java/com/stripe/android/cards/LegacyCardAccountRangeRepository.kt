@@ -1,17 +1,23 @@
 package com.stripe.android.cards
 
-import com.stripe.android.model.CardMetadata
+import com.stripe.android.model.AccountRange
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * A [CardAccountRangeRepository] that simulates existing card account range lookup logic by only
  * using a local, static source.
  */
 internal class LegacyCardAccountRangeRepository(
-    private val localCardAccountRangeSource: CardAccountRangeSource
+    private val staticCardAccountRangeSource: CardAccountRangeSource
 ) : CardAccountRangeRepository {
-    override suspend fun getAccountRange(cardNumber: String): CardMetadata.AccountRange? {
-        return Bin.create(cardNumber)?.let {
-            localCardAccountRangeSource.getAccountRange(cardNumber)
+    override suspend fun getAccountRange(
+        cardNumber: CardNumber.Unvalidated
+    ): AccountRange? {
+        return cardNumber.bin?.let {
+            staticCardAccountRangeSource.getAccountRange(cardNumber)
         }
     }
+
+    override val loading: Flow<Boolean> = flowOf(false)
 }

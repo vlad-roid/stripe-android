@@ -7,10 +7,10 @@ import com.stripe.android.exception.InvalidRequestException
 import com.stripe.android.model.PaymentMethod
 import com.stripe.android.model.PaymentMethodCreateParams
 import com.stripe.android.model.PaymentMethodCreateParamsFixtures
-import kotlin.test.Test
-import kotlin.test.assertFailsWith
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.Test
+import kotlin.test.assertFailsWith
 
 @RunWith(RobolectricTestRunner::class)
 class PaymentMethodEndToEndTest {
@@ -142,7 +142,7 @@ class PaymentMethodEndToEndTest {
         val repository = StripeApiRepository(
             context,
             ApiKeyFixtures.OXXO_PUBLISHABLE_KEY,
-            apiVersion = "2020-03-02;oxxo_beta=v1"
+            apiVersion = "${Stripe.API_VERSION};oxxo_beta=v1"
         )
         val paymentMethod = repository.createPaymentMethod(
             PaymentMethodCreateParams.createOxxo(
@@ -161,7 +161,7 @@ class PaymentMethodEndToEndTest {
         val repository = StripeApiRepository(
             context,
             ApiKeyFixtures.OXXO_PUBLISHABLE_KEY,
-            apiVersion = "2020-03-02;oxxo_beta=v1"
+            apiVersion = "${Stripe.API_VERSION};oxxo_beta=v1"
         )
 
         val missingNameException = assertFailsWith<InvalidRequestException>(

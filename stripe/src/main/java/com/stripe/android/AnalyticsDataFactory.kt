@@ -20,14 +20,24 @@ internal class AnalyticsDataFactory @VisibleForTesting internal constructor(
     private val packageManager: PackageManager?,
     private val packageInfo: PackageInfo?,
     private val packageName: String,
-    private val publishableKey: String
+    private val publishableKeySupplier: () -> String
 ) {
+    internal constructor(
+        context: Context,
+        publishableKey: String
+    ) : this(
+        context,
+        { publishableKey }
+    )
 
-    internal constructor(context: Context, publishableKey: String) : this(
+    internal constructor(
+        context: Context,
+        publishableKeySupplier: () -> String
+    ) : this(
         context.applicationContext.packageManager,
         context.applicationContext.packageInfo,
         context.applicationContext.packageName.orEmpty(),
-        publishableKey
+        publishableKeySupplier
     )
 
     @JvmSynthetic
@@ -76,11 +86,13 @@ internal class AnalyticsDataFactory @VisibleForTesting internal constructor(
         return createParams(
             AnalyticsEvent.Auth3ds2ChallengeErrored,
             extraParams = createIntentParam(intentId)
-                .plus(FIELD_ERROR_DATA to mapOf(
-                    "type" to "runtime_error_event",
-                    "error_code" to runtimeErrorEvent.errorCode,
-                    "error_message" to runtimeErrorEvent.errorMessage
-                ))
+                .plus(
+                    FIELD_ERROR_DATA to mapOf(
+                        "type" to "runtime_error_event",
+                        "error_code" to runtimeErrorEvent.errorCode,
+                        "error_message" to runtimeErrorEvent.errorMessage
+                    )
+                )
         )
     }
 
@@ -285,7 +297,7 @@ internal class AnalyticsDataFactory @VisibleForTesting internal constructor(
         return mapOf(
             FIELD_ANALYTICS_UA to ANALYTICS_UA,
             FIELD_EVENT to event.toString(),
-            FIELD_PUBLISHABLE_KEY to publishableKey,
+            FIELD_PUBLISHABLE_KEY to publishableKeySupplier(),
             FIELD_OS_NAME to Build.VERSION.CODENAME,
             FIELD_OS_RELEASE to Build.VERSION.RELEASE,
             FIELD_OS_VERSION to Build.VERSION.SDK_INT,

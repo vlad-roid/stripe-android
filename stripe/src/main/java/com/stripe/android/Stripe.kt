@@ -35,8 +35,8 @@ import com.stripe.android.model.StripeIntent
 import com.stripe.android.model.Token
 import com.stripe.android.model.TokenParams
 import com.stripe.android.view.AuthActivityStarter
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Entry-point to the Stripe SDK.
@@ -55,7 +55,7 @@ class Stripe internal constructor(
     private val paymentController: PaymentController,
     publishableKey: String,
     private val stripeAccountId: String? = null,
-    private val workScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+    private val workContext: CoroutineContext = Dispatchers.IO
 ) {
     private val publishableKey: String = ApiKeyValidator().requireValid(publishableKey)
 
@@ -116,7 +116,7 @@ class Stripe internal constructor(
         paymentController,
         publishableKey,
         stripeAccountId,
-        CoroutineScope(Dispatchers.IO)
+        Dispatchers.IO
     )
 
     //
@@ -223,8 +223,10 @@ class Stripe internal constructor(
      * @param clientSecret the [client_secret](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-client_secret)
      * property of a confirmed [PaymentIntent] object
      */
-    @Deprecated("Rename to better reflect behavior and match iOS naming.",
-        ReplaceWith("handleNextActionForPayment(activity, clientSecret)"))
+    @Deprecated(
+        "Rename to better reflect behavior and match iOS naming.",
+        ReplaceWith("handleNextActionForPayment(activity, clientSecret)")
+    )
     @UiThread
     fun authenticatePayment(activity: Activity, clientSecret: String) {
         paymentController.startAuth(
@@ -274,8 +276,10 @@ class Stripe internal constructor(
      * @param clientSecret the [client_secret](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-client_secret)
      * property of a confirmed [PaymentIntent] object
      */
-    @Deprecated("Rename to better reflect behavior and match iOS naming.",
-        ReplaceWith("handleNextActionForPayment(fragment, clientSecret)"))
+    @Deprecated(
+        "Rename to better reflect behavior and match iOS naming.",
+        ReplaceWith("handleNextActionForPayment(fragment, clientSecret)")
+    )
     @UiThread
     fun authenticatePayment(fragment: Fragment, clientSecret: String) {
         paymentController.startAuth(
@@ -347,8 +351,12 @@ class Stripe internal constructor(
      * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
      * @param callback a [ApiResultCallback] to receive the result or error
      */
-    @Throws(APIException::class, AuthenticationException::class,
-        InvalidRequestException::class, APIConnectionException::class)
+    @Throws(
+        APIException::class,
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun retrievePaymentIntent(
@@ -363,7 +371,7 @@ class Stripe internal constructor(
                 apiKey = publishableKey,
                 stripeAccount = stripeAccountId
             ),
-            workScope,
+            workContext,
             callback
         ).execute()
     }
@@ -380,8 +388,12 @@ class Stripe internal constructor(
      * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
      * @return a [PaymentIntent] or `null` if a problem occurred
      */
-    @Throws(APIException::class, AuthenticationException::class,
-        InvalidRequestException::class, APIConnectionException::class)
+    @Throws(
+        APIException::class,
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun retrievePaymentIntentSynchronous(
@@ -410,8 +422,12 @@ class Stripe internal constructor(
      * @return a [PaymentIntent] or `null` if a problem occurred
      */
     @Deprecated("use {@link #confirmPayment(Activity, ConfirmPaymentIntentParams)}")
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun confirmPaymentIntentSynchronous(
@@ -486,8 +502,10 @@ class Stripe internal constructor(
      * @param clientSecret the [client_secret](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-client_secret)
      * property of a confirmed [SetupIntent] object
      */
-    @Deprecated("Rename to better reflect behavior and match iOS naming.",
-        ReplaceWith("handleNextActionForSetupIntent(activity, clientSecret)"))
+    @Deprecated(
+        "Rename to better reflect behavior and match iOS naming.",
+        ReplaceWith("handleNextActionForSetupIntent(activity, clientSecret)")
+    )
     @UiThread
     fun authenticateSetup(activity: Activity, clientSecret: String) {
         paymentController.startAuth(
@@ -534,8 +552,10 @@ class Stripe internal constructor(
      * @param clientSecret the [client_secret](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-client_secret)
      * property of a confirmed [SetupIntent] object
      */
-    @Deprecated("Rename to better reflect behavior and match iOS naming.",
-        ReplaceWith("handleNextActionForSetupIntent(fragment, clientSecret)"))
+    @Deprecated(
+        "Rename to better reflect behavior and match iOS naming.",
+        ReplaceWith("handleNextActionForSetupIntent(fragment, clientSecret)")
+    )
     @UiThread
     fun authenticateSetup(fragment: Fragment, clientSecret: String) {
         paymentController.startAuth(
@@ -604,8 +624,12 @@ class Stripe internal constructor(
      * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
      * @param callback a [ApiResultCallback] to receive the result or error
      */
-    @Throws(APIException::class, AuthenticationException::class,
-        InvalidRequestException::class, APIConnectionException::class)
+    @Throws(
+        APIException::class,
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun retrieveSetupIntent(
@@ -620,7 +644,7 @@ class Stripe internal constructor(
                 apiKey = publishableKey,
                 stripeAccount = stripeAccountId
             ),
-            workScope,
+            workContext,
             callback
         ).execute()
     }
@@ -637,8 +661,12 @@ class Stripe internal constructor(
      * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
      * @return a [SetupIntent] or `null` if a problem occurred
      */
-    @Throws(APIException::class, AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class)
+    @Throws(
+        APIException::class,
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun retrieveSetupIntentSynchronous(
@@ -667,8 +695,12 @@ class Stripe internal constructor(
      * @return a [SetupIntent] or `null` if a problem occurred
      */
     @Deprecated("use {@link #confirmSetupIntent(Activity, ConfirmSetupIntentParams)}")
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun confirmSetupIntentSynchronous(
@@ -717,7 +749,7 @@ class Stripe internal constructor(
                 stripeAccount = stripeAccountId,
                 idempotencyKey = idempotencyKey
             ),
-            workScope,
+            workContext,
             callback
         ).execute()
     }
@@ -736,8 +768,12 @@ class Stripe internal constructor(
      *
      * @return a [PaymentMethod] or `null` if a problem occurred
      */
-    @Throws(APIException::class, AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class)
+    @Throws(
+        APIException::class,
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createPaymentMethodSynchronous(
@@ -860,7 +896,7 @@ class Stripe internal constructor(
                 stripeAccount = stripeAccountId,
                 idempotencyKey = idempotencyKey
             ),
-            workScope,
+            workContext,
             callback
         ).execute()
     }
@@ -885,8 +921,12 @@ class Stripe internal constructor(
      * @throws APIException any other type of problem (for instance, a temporary issue with
      * Stripe's servers
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createSourceSynchronous(
@@ -930,12 +970,14 @@ class Stripe internal constructor(
         callback: ApiResultCallback<Source>
     ) {
         RetrieveSourceTask(
-            stripeRepository, sourceId, clientSecret,
+            stripeRepository,
+            sourceId,
+            clientSecret,
             ApiRequest.Options(
                 apiKey = publishableKey,
                 stripeAccount = stripeAccountId
             ),
-            workScope,
+            workContext,
             callback
         ).execute()
     }
@@ -959,8 +1001,12 @@ class Stripe internal constructor(
      * @throws APIConnectionException failure to connect to Stripe's API
      * @throws APIException any other type of problem (for instance, a temporary issue with Stripe's servers)
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun retrieveSourceSynchronous(
@@ -1030,8 +1076,12 @@ class Stripe internal constructor(
      * @throws APIException any other type of problem (for instance, a temporary issue with
      * Stripe's servers)
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createAccountTokenSynchronous(
@@ -1104,8 +1154,13 @@ class Stripe internal constructor(
      * @throws APIException any other type of problem (for instance, a temporary issue with
      * Stripe's servers
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        CardException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createBankAccountTokenSynchronous(
@@ -1169,8 +1224,13 @@ class Stripe internal constructor(
      * @throws APIException any other type of problem (for instance, a temporary issue with
      * Stripe's servers)
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        CardException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createPiiTokenSynchronous(
@@ -1198,8 +1258,10 @@ class Stripe internal constructor(
      * @param idempotencyKey optional, see [Idempotent Requests](https://stripe.com/docs/api/idempotent_requests)
      * @param callback a [ApiResultCallback] to receive the result or error
      */
-    @Deprecated("Deprecated, replace with Stripe#createCardToken()",
-        ReplaceWith("createCardToken(card, idempotencyKey, callback)"))
+    @Deprecated(
+        "Deprecated, replace with Stripe#createCardToken()",
+        ReplaceWith("createCardToken(card, idempotencyKey, callback)")
+    )
     @UiThread
     @JvmOverloads
     fun createToken(
@@ -1292,8 +1354,13 @@ class Stripe internal constructor(
      * Stripe's servers
      */
     @Deprecated("Use createCardTokenSynchronous(CardParams)")
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        CardException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createCardTokenSynchronous(
@@ -1331,8 +1398,13 @@ class Stripe internal constructor(
      * @throws APIException any other type of problem (for instance, a temporary issue with
      * Stripe's servers
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        CardException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createCardTokenSynchronous(
@@ -1396,8 +1468,13 @@ class Stripe internal constructor(
      * @throws APIException any other type of problem (for instance, a temporary issue with
      * Stripe's servers)
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        CardException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createCvcUpdateTokenSynchronous(
@@ -1458,8 +1535,13 @@ class Stripe internal constructor(
      *
      * @return a [Token] representing the person
      */
-    @Throws(AuthenticationException::class, InvalidRequestException::class,
-        APIConnectionException::class, CardException::class, APIException::class)
+    @Throws(
+        AuthenticationException::class,
+        InvalidRequestException::class,
+        APIConnectionException::class,
+        CardException::class,
+        APIException::class
+    )
     @WorkerThread
     @JvmOverloads
     fun createPersonTokenSynchronous(
@@ -1491,7 +1573,7 @@ class Stripe internal constructor(
                 stripeAccount = stripeAccountId,
                 idempotencyKey = idempotencyKey
             ),
-            workScope,
+            workContext,
             callback
         ).execute()
     }
@@ -1520,7 +1602,7 @@ class Stripe internal constructor(
                 stripeAccount = stripeAccountId,
                 idempotencyKey = idempotencyKey
             ),
-            workScope,
+            workContext,
             callback
         ).execute()
     }
@@ -1549,92 +1631,92 @@ class Stripe internal constructor(
         )
     }
 
-    private class CreateSourceTask internal constructor(
+    private class CreateSourceTask(
         private val stripeRepository: StripeRepository,
         private val sourceParams: SourceParams,
         private val options: ApiRequest.Options,
-        workScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        workContext: CoroutineContext,
         callback: ApiResultCallback<Source>
-    ) : ApiOperation<Source>(workScope, callback) {
+    ) : ApiOperation<Source>(workContext, callback) {
         @Throws(StripeException::class)
         override suspend fun getResult(): Source? {
             return stripeRepository.createSource(sourceParams, options)
         }
     }
 
-    private class RetrieveSourceTask internal constructor(
+    private class RetrieveSourceTask(
         private val stripeRepository: StripeRepository,
         private val sourceId: String,
         private val clientSecret: String,
         private val options: ApiRequest.Options,
-        workScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        workContext: CoroutineContext,
         callback: ApiResultCallback<Source>
-    ) : ApiOperation<Source>(workScope, callback) {
+    ) : ApiOperation<Source>(workContext, callback) {
         @Throws(StripeException::class)
         override suspend fun getResult(): Source? {
             return stripeRepository.retrieveSource(sourceId, clientSecret, options)
         }
     }
 
-    private class CreatePaymentMethodTask internal constructor(
+    private class CreatePaymentMethodTask(
         private val stripeRepository: StripeRepository,
         private val paymentMethodCreateParams: PaymentMethodCreateParams,
         private val options: ApiRequest.Options,
-        workScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        workContext: CoroutineContext,
         callback: ApiResultCallback<PaymentMethod>
-    ) : ApiOperation<PaymentMethod>(workScope, callback) {
+    ) : ApiOperation<PaymentMethod>(workContext, callback) {
         @Throws(StripeException::class)
         override suspend fun getResult(): PaymentMethod? {
             return stripeRepository.createPaymentMethod(paymentMethodCreateParams, options)
         }
     }
 
-    private class CreateTokenTask internal constructor(
+    private class CreateTokenTask(
         private val stripeRepository: StripeRepository,
         private val tokenParams: TokenParams,
         private val options: ApiRequest.Options,
-        workScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        workContext: CoroutineContext,
         callback: ApiResultCallback<Token>
-    ) : ApiOperation<Token>(workScope, callback) {
+    ) : ApiOperation<Token>(workContext, callback) {
         @Throws(StripeException::class)
         override suspend fun getResult(): Token? {
             return stripeRepository.createToken(tokenParams, options)
         }
     }
 
-    private class CreateFileTask internal constructor(
+    private class CreateFileTask(
         private val stripeRepository: StripeRepository,
         private val fileParams: StripeFileParams,
         private val options: ApiRequest.Options,
-        workScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        workContext: CoroutineContext,
         callback: ApiResultCallback<StripeFile>
-    ) : ApiOperation<StripeFile>(workScope, callback) {
+    ) : ApiOperation<StripeFile>(workContext, callback) {
         @Throws(StripeException::class)
         override suspend fun getResult(): StripeFile {
             return stripeRepository.createFile(fileParams, options)
         }
     }
 
-    private class RetrievePaymentIntentTask internal constructor(
+    private class RetrievePaymentIntentTask(
         private val stripeRepository: StripeRepository,
         private val clientSecret: String,
         private val options: ApiRequest.Options,
-        workScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        workContext: CoroutineContext,
         callback: ApiResultCallback<PaymentIntent>
-    ) : ApiOperation<PaymentIntent>(workScope, callback) {
+    ) : ApiOperation<PaymentIntent>(workContext, callback) {
         @Throws(StripeException::class)
         override suspend fun getResult(): PaymentIntent? {
             return stripeRepository.retrievePaymentIntent(clientSecret, options)
         }
     }
 
-    private class RetrieveSetupIntentTask internal constructor(
+    private class RetrieveSetupIntentTask(
         private val stripeRepository: StripeRepository,
         private val clientSecret: String,
         private val options: ApiRequest.Options,
-        workScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        workContext: CoroutineContext,
         callback: ApiResultCallback<SetupIntent>
-    ) : ApiOperation<SetupIntent>(workScope, callback) {
+    ) : ApiOperation<SetupIntent>(workContext, callback) {
         @Throws(StripeException::class)
         override suspend fun getResult(): SetupIntent? {
             return stripeRepository.retrieveSetupIntent(clientSecret, options)

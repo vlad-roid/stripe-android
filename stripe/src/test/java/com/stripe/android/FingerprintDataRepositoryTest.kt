@@ -7,15 +7,15 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
-import java.util.Calendar
-import java.util.concurrent.TimeUnit
-import kotlin.test.AfterTest
-import kotlin.test.Test
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.Calendar
+import java.util.concurrent.TimeUnit
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 @RunWith(RobolectricTestRunner::class)
 @ExperimentalCoroutinesApi
@@ -51,7 +51,7 @@ class FingerprintDataRepositoryTest {
             fingerprintRequestExecutor = object : FingerprintRequestExecutor {
                 override suspend fun execute(request: FingerprintRequest) = expectedFingerprintData
             },
-            dispatcher = testDispatcher
+            workContext = testDispatcher
         )
         repository.save(createFingerprintData(elapsedTime = -60L))
         repository.refresh()
@@ -71,7 +71,7 @@ class FingerprintDataRepositoryTest {
             localStore = store,
             fingerprintRequestFactory = fingerprintRequestFactory,
             fingerprintRequestExecutor = fingerprintRequestExecutor,
-            dispatcher = testDispatcher
+            workContext = testDispatcher
         )
         repository.refresh()
 
