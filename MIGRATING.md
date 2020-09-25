@@ -2,7 +2,8 @@
 
 ## Migrating from versions < 16.0.0
 - Changes to `CardInputWidget` and `CardMultilineWidget`
-    - `PaymentConfiguration.init()` must be called before the card widgets are instantiated.
+    -  To enable 19-digit card support, [PaymentConfiguration.init]
+       must be called before the card widgets are instantiated.
     - `card` and `cardBuilder` are deprecated. Use `cardParams` instead.
 - Changes to `CardNumberEditText`
     - `lengthMax` and `cardNumber` are deprecated
@@ -53,6 +54,7 @@
 - Changes to `Stripe`
     - `createCardParams()` that accepts a `Card` parameter is deprecated.
       Use `createCardParams()` that accepts a `CardParams` parameter instead.
+    - `createToken()` has been removed; use `createCardToken()` instead.
 
 ## Migrating from versions < 15.0.0
 - The SDK now targets JVM 1.8
@@ -751,7 +753,7 @@
 - The `samplestore` app has moved to [stripe-samples/sample-store-android](https://github.com/stripe-samples/sample-store-android).
 - Remove `PaymentMethodsActivity.newIntent()`. Use `PaymentMethodsActivityStarter#startForResult()` to start `PaymentMethodsActivity`.
 - Remove `PaymentMethodsActivity.EXTRA_SELECTED_PAYMENT`. Use `PaymentMethodsActivityStarter.Result#fromIntent(intent)` to obtain the result of `PaymentMethodsActivity`.
-- Remove `Stripe#createToken()` with `Executor` argument. Use [Stripe#createToken(Card, ApiResultCallback)](https://stripe.dev/stripe-android/com/stripe/android/Stripe.html#createToken-com.stripe.android.model.Card-com.stripe.android.ApiResultCallback-) instead.
+- Remove `Stripe#createToken()` with `Executor` argument. Use [Stripe#createCardToken()](https://stripe.dev/stripe-android/stripe/com.stripe.android/-stripe/create-card-token.html) instead.
 
 ## Migration from versions < 10.1.0
 - You must call `PaymentConfiguration.init()` before calling `CustomerSession.initCustomerSession()`.

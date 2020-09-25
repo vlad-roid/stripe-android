@@ -142,7 +142,7 @@ class PaymentMethodEndToEndTest {
         val repository = StripeApiRepository(
             context,
             ApiKeyFixtures.OXXO_PUBLISHABLE_KEY,
-            apiVersion = "${Stripe.API_VERSION};oxxo_beta=v1"
+            apiVersion = "2020-03-02;oxxo_beta=v1"
         )
         val paymentMethod = repository.createPaymentMethod(
             PaymentMethodCreateParams.createOxxo(
@@ -161,7 +161,7 @@ class PaymentMethodEndToEndTest {
         val repository = StripeApiRepository(
             context,
             ApiKeyFixtures.OXXO_PUBLISHABLE_KEY,
-            apiVersion = "${Stripe.API_VERSION};oxxo_beta=v1"
+            apiVersion = "2020-03-02;oxxo_beta=v1"
         )
 
         val missingNameException = assertFailsWith<InvalidRequestException>(
@@ -223,5 +223,20 @@ class PaymentMethodEndToEndTest {
         )
         assertThat(paymentMethod?.type)
             .isEqualTo(PaymentMethod.Type.GrabPay)
+    }
+
+    @Test
+    fun `createPaymentMethod() with PayPal PaymentMethod should create expected object`() {
+        val paymentMethod = StripeApiRepository(
+            context,
+            ApiKeyFixtures.PAYPAL_PUBLISHABLE_KEY
+        ).createPaymentMethod(
+            PaymentMethodCreateParams.createPayPal(),
+            ApiRequest.Options(ApiKeyFixtures.PAYPAL_PUBLISHABLE_KEY)
+        )
+
+        requireNotNull(paymentMethod)
+        assertThat(paymentMethod.type)
+            .isEqualTo(PaymentMethod.Type.PayPal)
     }
 }

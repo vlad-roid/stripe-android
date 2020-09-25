@@ -250,8 +250,8 @@ open class CardNumberEditText internal constructor(
     }
 
     @JvmSynthetic
-    internal fun updateAccountRange(cardNumber: CardNumber.Unvalidated) {
-        if (shouldUpdateAccountRange(cardNumber)) {
+    internal fun queryAccountRangeRepository(cardNumber: CardNumber.Unvalidated) {
+        if (shouldQueryAccountRange(cardNumber)) {
             // cancel in-flight job
             cancelAccountRangeRepositoryJob()
 
@@ -260,12 +260,14 @@ open class CardNumberEditText internal constructor(
 
             accountRangeRepositoryJob = CoroutineScope(workContext).launch {
                 val bin = cardNumber.bin
-                if (bin != null) {
-                    onAccountRangeResult(
-                        cardAccountRangeRepository.getAccountRange(cardNumber)
-                    )
+                val accountRange = if (bin != null) {
+                    cardAccountRangeRepository.getAccountRange(cardNumber)
                 } else {
-                    onAccountRangeResult(null)
+                    null
+                }
+
+                withContext(Dispatchers.Main) {
+                    onAccountRangeResult(accountRange)
                 }
             }
         }
@@ -277,24 +279,29 @@ open class CardNumberEditText internal constructor(
     }
 
     @JvmSynthetic
-    internal suspend fun onAccountRangeResult(
+    internal fun onAccountRangeResult(
         newAccountRange: AccountRange?
-    ) = withContext(Dispatchers.Main) {
+    ) {
         accountRange = newAccountRange
         cardBrand = newAccountRange?.brand ?: CardBrand.Unknown
     }
 
-    private fun shouldUpdateAccountRange(cardNumber: CardNumber.Unvalidated): Boolean {
+    private fun shouldQueryAccountRange(cardNumber: CardNumber.Unvalidated): Boolean {
         return accountRange == null ||
             cardNumber.bin == null ||
             accountRange?.binRange?.matches(cardNumber) == false
     }
 
-    private fun onCardMetadataLoadedTooSlow() {
+    @JvmSynthetic
+    internal fun onCardMetadataLoadedTooSlow() {
         analyticsRequestExecutor.executeAsync(
             analyticsRequestFactory.create(
                 analyticsDataFactory.createParams(AnalyticsEvent.CardMetadataLoadedTooSlow),
-                ApiRequest.Options(publishableKeySupplier())
+                ApiRequest.Options(
+                    runCatching {
+                        publishableKeySupplier()
+                    }.getOrDefault(ApiRequest.Options.UNDEFINED_PUBLISHABLE_KEY)
+                )
             )
         )
     }
@@ -327,7 +334,14 @@ open class CardNumberEditText internal constructor(
             }
 
             val cardNumber = CardNumber.Unvalidated(s?.toString().orEmpty())
-            updateAccountRange(cardNumber)
+            val staticAccountRange = staticCardAccountRanges.match(cardNumber)
+            if (staticAccountRange == null || shouldQueryRepository(staticAccountRange)) {
+                // query for AccountRange data
+                queryAccountRangeRepository(cardNumber)
+            } else {
+                // use static AccountRange data
+                onAccountRangeResult(staticAccountRange)
+            }
 
             isPastedPan = isPastedPan(start, before, count, cardNumber)
 
@@ -422,6 +436,14 @@ open class CardNumberEditText internal constructor(
         ): Boolean {
             return currentCount > previousCount && startPosition == 0 &&
                 cardNumber.normalized.length >= CardNumber.MIN_PAN_LENGTH
+        }
+
+        private fun shouldQueryRepository(
+            accountRange: AccountRange
+        ) = when (accountRange.brand) {
+            CardBrand.Unknown,
+            CardBrand.UnionPay -> true
+            else -> false
         }
     }
 
