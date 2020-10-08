@@ -35,7 +35,11 @@ import com.stripe.android.model.StripeIntent
 import com.stripe.android.model.Token
 import com.stripe.android.model.TokenParams
 import com.stripe.android.view.AuthActivityStarter
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -434,14 +438,16 @@ class Stripe internal constructor(
         confirmPaymentIntentParams: ConfirmPaymentIntentParams,
         idempotencyKey: String? = null
     ): PaymentIntent? {
-        return stripeRepository.confirmPaymentIntent(
-            confirmPaymentIntentParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId,
-                idempotencyKey = idempotencyKey
+        return runBlocking {
+            stripeRepository.confirmPaymentIntent(
+                confirmPaymentIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId,
+                    idempotencyKey = idempotencyKey
+                )
             )
-        )
+        }
     }
 
     //
@@ -707,14 +713,16 @@ class Stripe internal constructor(
         confirmSetupIntentParams: ConfirmSetupIntentParams,
         idempotencyKey: String? = null
     ): SetupIntent? {
-        return stripeRepository.confirmSetupIntent(
-            confirmSetupIntentParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId,
-                idempotencyKey = idempotencyKey
+        return runBlocking {
+            stripeRepository.confirmSetupIntent(
+                confirmSetupIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId,
+                    idempotencyKey = idempotencyKey
+                )
             )
-        )
+        }
     }
 
     //
@@ -1559,6 +1567,7 @@ class Stripe internal constructor(
      * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
      * @param callback a [ApiResultCallback] to receive the result or error
      */
+    @UiThread
     @JvmOverloads
     fun createFile(
         fileParams: StripeFileParams,
@@ -1566,17 +1575,34 @@ class Stripe internal constructor(
         stripeAccountId: String? = this.stripeAccountId,
         callback: ApiResultCallback<StripeFile>
     ) {
-        CreateFileTask(
-            stripeRepository,
-            fileParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId,
-                idempotencyKey = idempotencyKey
-            ),
-            workContext,
-            callback
-        ).execute()
+        CoroutineScope(workContext).launch {
+            val result = runCatching {
+                stripeRepository.createFile(
+                    fileParams,
+                    ApiRequest.Options(
+                        apiKey = publishableKey,
+                        stripeAccount = stripeAccountId,
+                        idempotencyKey = idempotencyKey
+                    )
+                )
+            }
+
+            withContext(Dispatchers.Main) {
+                result.fold(
+                    onSuccess = { file ->
+                        callback.onSuccess(file)
+                    },
+                    onFailure = { error ->
+                        callback.onError(
+                            when (error) {
+                                is Exception -> error
+                                else -> RuntimeException(error)
+                            }
+                        )
+                    }
+                )
+            }
+        }
     }
 
     /**
@@ -1587,20 +1613,23 @@ class Stripe internal constructor(
      * @param stripeAccountId Optional, the Connect account to associate with this request.
      * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
      */
+    @WorkerThread
     @JvmOverloads
     fun createFileSynchronous(
         fileParams: StripeFileParams,
         idempotencyKey: String? = null,
         stripeAccountId: String? = this.stripeAccountId
     ): StripeFile {
-        return stripeRepository.createFile(
-            fileParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId,
-                idempotencyKey = idempotencyKey
+        return runBlocking {
+            stripeRepository.createFile(
+                fileParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId,
+                    idempotencyKey = idempotencyKey
+                )
             )
-        )
+        }
     }
 
     private class CreateSourceTask(
@@ -1653,19 +1682,6 @@ class Stripe internal constructor(
         @Throws(StripeException::class)
         override suspend fun getResult(): Token? {
             return stripeRepository.createToken(tokenParams, options)
-        }
-    }
-
-    private class CreateFileTask(
-        private val stripeRepository: StripeRepository,
-        private val fileParams: StripeFileParams,
-        private val options: ApiRequest.Options,
-        workContext: CoroutineContext,
-        callback: ApiResultCallback<StripeFile>
-    ) : ApiOperation<StripeFile>(workContext, callback) {
-        @Throws(StripeException::class)
-        override suspend fun getResult(): StripeFile {
-            return stripeRepository.createFile(fileParams, options)
         }
     }
 

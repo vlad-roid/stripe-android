@@ -1,4 +1,4 @@
-package com.stripe.android.checkout
+package com.stripe.android.paymentsheet
 
 import android.os.Bundle
 import android.view.View
@@ -15,15 +15,15 @@ import com.stripe.android.databinding.ActivityCheckoutBinding
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-internal class CheckoutActivity : AppCompatActivity() {
+internal class PaymentSheetActivity : AppCompatActivity() {
     private val viewBinding by lazy {
         ActivityCheckoutBinding.inflate(layoutInflater)
     }
     private val bottomSheetBehavior by lazy {
         BottomSheetBehavior.from(viewBinding.bottomSheet)
     }
-    private val viewModel by viewModels<CheckoutViewModel> {
-        CheckoutViewModel.Factory(application)
+    private val viewModel by viewModels<PaymentSheetViewModel> {
+        PaymentSheetViewModel.Factory(application)
     }
 
     private val fragmentContainerId: Int
@@ -45,23 +45,27 @@ internal class CheckoutActivity : AppCompatActivity() {
 
         setupBottomSheet()
 
+        viewModel.selection.observe(this) {
+            viewBinding.buyButton.isEnabled = it != null
+        }
+
         // TODO: Add loading state
         supportFragmentManager.commit {
-            replace(fragmentContainerId, CheckoutPaymentMethodsListFragment())
+            replace(fragmentContainerId, PaymentSheetPaymentMethodsListFragment())
         }
 
         viewModel.transition.observe(this) {
             supportFragmentManager.commit {
                 when (it) {
-                    CheckoutViewModel.TransitionTarget.AddCard -> {
+                    PaymentSheetViewModel.TransitionTarget.AddCard -> {
                         setCustomAnimations(
-                            R.anim.stripe_checkout_transition_enter_from_right,
-                            R.anim.stripe_checkout_transition_exit_to_left,
-                            R.anim.stripe_checkout_transition_enter_from_left,
-                            R.anim.stripe_checkout_transition_exit_to_right
+                            R.anim.stripe_paymentsheet_transition_enter_from_right,
+                            R.anim.stripe_paymentsheet_transition_exit_to_left,
+                            R.anim.stripe_paymentsheet_transition_enter_from_left,
+                            R.anim.stripe_paymentsheet_transition_exit_to_right
                         )
                         addToBackStack(null)
-                        replace(fragmentContainerId, CheckoutAddCardFragment())
+                        replace(fragmentContainerId, PaymentSheetAddCardFragment())
                     }
                 }
             }

@@ -1,7 +1,8 @@
-package com.stripe.android.checkout
+package com.stripe.android.paymentsheet
 
 import android.app.Application
 import android.content.Intent
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -13,13 +14,14 @@ import com.stripe.android.StripeApiRepository
 import com.stripe.android.StripeRepository
 import com.stripe.android.model.ListPaymentMethodsParams
 import com.stripe.android.model.PaymentMethod
+import com.stripe.android.paymentsheet.model.PaymentSelection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.lang.IllegalStateException
 import kotlin.coroutines.CoroutineContext
 
-internal class CheckoutViewModel internal constructor(
+internal class PaymentSheetViewModel internal constructor(
     application: Application,
     private val publishableKey: String,
     private val stripeAccountId: String?,
@@ -28,9 +30,12 @@ internal class CheckoutViewModel internal constructor(
 ) : AndroidViewModel(application) {
     private val mutableError = MutableLiveData<Throwable>()
     private val mutableTransition = MutableLiveData<TransitionTarget>()
-    internal val paymentMethods = MutableLiveData<List<PaymentMethod>>()
+    private val mutablePaymentMethods = MutableLiveData<List<PaymentMethod>>()
+    private val mutableSelection = MutableLiveData<PaymentSelection?>()
+    internal val paymentMethods: LiveData<List<PaymentMethod>> = mutablePaymentMethods
     internal val error: LiveData<Throwable> = mutableError
     internal val transition: LiveData<TransitionTarget> = mutableTransition
+    internal val selection: LiveData<PaymentSelection?> = mutableSelection
 
     fun onError(throwable: Throwable) {
         mutableError.postValue(throwable)
@@ -40,8 +45,12 @@ internal class CheckoutViewModel internal constructor(
         mutableTransition.postValue(target)
     }
 
+    fun updateSelection(selection: PaymentSelection?) {
+        mutableSelection.postValue(selection)
+    }
+
     fun updatePaymentMethods(intent: Intent) {
-        val args: CheckoutActivityStarter.Args? = CheckoutActivityStarter.Args.fromIntent(intent)
+        val args: PaymentSheetActivityStarter.Args? = PaymentSheetActivityStarter.Args.fromIntent(intent)
         if (args == null) {
             onError(IllegalStateException("Missing activity args"))
         } else {
@@ -50,6 +59,11 @@ internal class CheckoutViewModel internal constructor(
                 args.customerId
             )
         }
+    }
+
+    @VisibleForTesting
+    internal fun setPaymentMethods(paymentMethods: List<PaymentMethod>) {
+        mutablePaymentMethods.postValue(paymentMethods)
     }
 
     private fun updatePaymentMethods(
@@ -70,9 +84,7 @@ internal class CheckoutViewModel internal constructor(
                 )
             }
             result.fold(
-                onSuccess = {
-                    paymentMethods.postValue(it)
-                },
+                onSuccess = this@PaymentSheetViewModel::setPaymentMethods,
                 onFailure = {
                     onError(it)
                 }
@@ -96,7 +108,7 @@ internal class CheckoutViewModel internal constructor(
                 publishableKey
             )
 
-            return CheckoutViewModel(application, publishableKey, stripeAccountId, stripeRepository) as T
+            return PaymentSheetViewModel(application, publishableKey, stripeAccountId, stripeRepository) as T
         }
     }
 }

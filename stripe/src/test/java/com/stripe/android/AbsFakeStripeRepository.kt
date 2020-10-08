@@ -28,7 +28,7 @@ import org.json.JSONObject
 
 internal abstract class AbsFakeStripeRepository : StripeRepository {
 
-    override fun confirmPaymentIntent(
+    override suspend fun confirmPaymentIntent(
         confirmPaymentIntentParams: ConfirmPaymentIntentParams,
         options: ApiRequest.Options,
         expandFields: List<String>
@@ -52,7 +52,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
         return null
     }
 
-    override fun confirmSetupIntent(
+    override suspend fun confirmSetupIntent(
         confirmSetupIntentParams: ConfirmSetupIntentParams,
         options: ApiRequest.Options,
         expandFields: List<String>
@@ -130,7 +130,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
     }
 
     @Throws(APIException::class)
-    override fun addCustomerSource(
+    override suspend fun addCustomerSource(
         customerId: String,
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -142,7 +142,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
     }
 
     @Throws(APIException::class)
-    override fun deleteCustomerSource(
+    override suspend fun deleteCustomerSource(
         customerId: String,
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -153,7 +153,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
     }
 
     @Throws(APIException::class)
-    override fun attachPaymentMethod(
+    override suspend fun attachPaymentMethod(
         customerId: String,
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -164,7 +164,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
     }
 
     @Throws(APIException::class)
-    override fun detachPaymentMethod(
+    override suspend fun detachPaymentMethod(
         publishableKey: String,
         productUsageTokens: Set<String>,
         paymentMethodId: String,
@@ -174,7 +174,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
     }
 
     @Throws(APIException::class)
-    override fun getPaymentMethods(
+    override suspend fun getPaymentMethods(
         listPaymentMethodsParams: ListPaymentMethodsParams,
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -184,7 +184,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
     }
 
     @Throws(APIException::class)
-    override fun setDefaultCustomerSource(
+    override suspend fun setDefaultCustomerSource(
         customerId: String,
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -195,7 +195,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
         return null
     }
 
-    override fun setCustomerShippingInfo(
+    override suspend fun setCustomerShippingInfo(
         customerId: String,
         publishableKey: String,
         productUsageTokens: Set<String>,
@@ -205,7 +205,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
         return null
     }
 
-    override fun retrieveCustomer(
+    override suspend fun retrieveCustomer(
         customerId: String,
         productUsageTokens: Set<String>,
         requestOptions: ApiRequest.Options
@@ -252,7 +252,7 @@ internal abstract class AbsFakeStripeRepository : StripeRepository {
         requestOptions: ApiRequest.Options
     ): Complete3ds2Result = Complete3ds2Result(true)
 
-    override fun createFile(
+    override suspend fun createFile(
         fileParams: StripeFileParams,
         requestOptions: ApiRequest.Options
     ): StripeFile {

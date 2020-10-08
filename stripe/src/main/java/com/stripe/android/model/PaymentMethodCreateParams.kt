@@ -170,6 +170,7 @@ data class PaymentMethodCreateParams internal constructor(
         Alipay("alipay"),
         GrabPay("grabpay"),
         PayPal("paypal"),
+        AfterpayClearpay("afterpay_clearpay"),
     }
 
     @Parcelize
@@ -593,7 +594,7 @@ data class PaymentMethodCreateParams internal constructor(
 
         @JvmSynthetic
         @JvmOverloads
-        internal fun createOxxo(
+        fun createOxxo(
             billingDetails: PaymentMethod.BillingDetails,
             metadata: Map<String, String>? = null
         ): PaymentMethodCreateParams {
@@ -622,6 +623,19 @@ data class PaymentMethodCreateParams internal constructor(
         ): PaymentMethodCreateParams {
             return PaymentMethodCreateParams(
                 type = Type.PayPal,
+                metadata = metadata
+            )
+        }
+
+        @JvmSynthetic
+        @JvmOverloads
+        internal fun createAfterpayClearpay(
+            billingDetails: PaymentMethod.BillingDetails? = null,
+            metadata: Map<String, String>? = null
+        ): PaymentMethodCreateParams {
+            return PaymentMethodCreateParams(
+                type = Type.AfterpayClearpay,
+                billingDetails = billingDetails,
                 metadata = metadata
             )
         }
