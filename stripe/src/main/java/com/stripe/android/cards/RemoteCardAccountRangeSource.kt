@@ -1,25 +1,22 @@
 package com.stripe.android.cards
 
-import com.stripe.android.AnalyticsDataFactory
 import com.stripe.android.AnalyticsEvent
-import com.stripe.android.AnalyticsRequest
-import com.stripe.android.AnalyticsRequestExecutor
-import com.stripe.android.ApiRequest
-import com.stripe.android.StripeRepository
 import com.stripe.android.model.AccountRange
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.stripe.android.networking.AnalyticsDataFactory
+import com.stripe.android.networking.AnalyticsRequest
+import com.stripe.android.networking.AnalyticsRequestExecutor
+import com.stripe.android.networking.ApiRequest
+import com.stripe.android.networking.StripeRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
-@ExperimentalCoroutinesApi
 internal class RemoteCardAccountRangeSource(
     private val stripeRepository: StripeRepository,
     private val requestOptions: ApiRequest.Options,
     private val cardAccountRangeStore: CardAccountRangeStore,
     private val analyticsRequestExecutor: AnalyticsRequestExecutor,
     private val analyticsRequestFactory: AnalyticsRequest.Factory,
-    private val analyticsDataFactory: AnalyticsDataFactory,
-    private val publishableKey: String
+    private val analyticsDataFactory: AnalyticsDataFactory
 ) : CardAccountRangeSource {
 
     private val mutableLoading = MutableStateFlow(false)
@@ -59,8 +56,7 @@ internal class RemoteCardAccountRangeSource(
     private fun onCardMetadataMissingRange() {
         analyticsRequestExecutor.executeAsync(
             analyticsRequestFactory.create(
-                analyticsDataFactory.createParams(AnalyticsEvent.CardMetadataMissingRange),
-                ApiRequest.Options(publishableKey)
+                analyticsDataFactory.createParams(AnalyticsEvent.CardMetadataMissingRange)
             )
         )
     }

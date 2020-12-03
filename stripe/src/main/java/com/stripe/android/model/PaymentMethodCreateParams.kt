@@ -3,7 +3,7 @@ package com.stripe.android.model
 import android.os.Parcelable
 import com.stripe.android.ObjectBuilder
 import com.stripe.android.Stripe
-import kotlinx.android.parcel.Parcelize
+import kotlinx.parcelize.Parcelize
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.Locale
@@ -28,8 +28,10 @@ data class PaymentMethodCreateParams internal constructor(
     private val auBecsDebit: AuBecsDebit? = null,
     private val bacsDebit: BacsDebit? = null,
     private val sofort: Sofort? = null,
+    private val upi: Upi? = null,
+    private val netbanking: Netbanking? = null,
 
-    private val billingDetails: PaymentMethod.BillingDetails? = null,
+    internal val billingDetails: PaymentMethod.BillingDetails? = null,
 
     private val metadata: Map<String, String>? = null,
     private val productUsage: Set<String> = emptySet()
@@ -124,6 +126,28 @@ data class PaymentMethodCreateParams internal constructor(
         metadata = metadata
     )
 
+    private constructor(
+        upi: Upi,
+        billingDetails: PaymentMethod.BillingDetails?,
+        metadata: Map<String, String>?
+    ) : this(
+        type = Type.Upi,
+        upi = upi,
+        billingDetails = billingDetails,
+        metadata = metadata
+    )
+
+    private constructor(
+        netbanking: Netbanking,
+        billingDetails: PaymentMethod.BillingDetails?,
+        metadata: Map<String, String>?
+    ) : this(
+        type = Type.Netbanking,
+        netbanking = netbanking,
+        billingDetails = billingDetails,
+        metadata = metadata
+    )
+
     override fun toParamMap(): Map<String, Any> {
         return mapOf(
             PARAM_TYPE to type.code
@@ -148,6 +172,8 @@ data class PaymentMethodCreateParams internal constructor(
                 Type.AuBecsDebit -> auBecsDebit?.toParamMap()
                 Type.BacsDebit -> bacsDebit?.toParamMap()
                 Type.Sofort -> sofort?.toParamMap()
+                Type.Upi -> upi?.toParamMap()
+                Type.Netbanking -> netbanking?.toParamMap()
                 else -> null
             }.takeUnless { it.isNullOrEmpty() }?.let {
                 mapOf(type.code to it)
@@ -171,6 +197,8 @@ data class PaymentMethodCreateParams internal constructor(
         GrabPay("grabpay"),
         PayPal("paypal"),
         AfterpayClearpay("afterpay_clearpay"),
+        Upi("upi"),
+        Netbanking("netbanking")
     }
 
     @Parcelize
@@ -252,12 +280,13 @@ data class PaymentMethodCreateParams internal constructor(
 
     @Parcelize
     data class Ideal(
-        private val bank: String?
+        var bank: String?
     ) : StripeParamsModel, Parcelable {
         override fun toParamMap(): Map<String, Any> {
             return bank?.let { mapOf(PARAM_BANK to it) }.orEmpty()
         }
 
+        @Deprecated("Ideal#bank is now visible and mutable.")
         class Builder : ObjectBuilder<Ideal> {
             internal var bank: String? = null
 
@@ -277,7 +306,7 @@ data class PaymentMethodCreateParams internal constructor(
 
     @Parcelize
     data class Fpx(
-        private val bank: String?
+        var bank: String?
     ) : StripeParamsModel, Parcelable {
         override fun toParamMap(): Map<String, Any> {
             return bank?.let {
@@ -285,6 +314,7 @@ data class PaymentMethodCreateParams internal constructor(
             }.orEmpty()
         }
 
+        @Deprecated("Fpx#bank is now visible and mutable.")
         class Builder : ObjectBuilder<Fpx> {
             internal var bank: String? = null
 
@@ -303,8 +333,23 @@ data class PaymentMethodCreateParams internal constructor(
     }
 
     @Parcelize
+    data class Upi(
+        private val vpa: String?
+    ) : StripeParamsModel, Parcelable {
+        override fun toParamMap(): Map<String, Any> {
+            return vpa?.let {
+                mapOf(PARAM_VPA to it)
+            }.orEmpty()
+        }
+
+        private companion object {
+            private const val PARAM_VPA: String = "vpa"
+        }
+    }
+
+    @Parcelize
     data class SepaDebit(
-        private val iban: String?
+        var iban: String?
     ) : StripeParamsModel, Parcelable {
         override fun toParamMap(): Map<String, Any> {
             return iban?.let {
@@ -312,6 +357,7 @@ data class PaymentMethodCreateParams internal constructor(
             }.orEmpty()
         }
 
+        @Deprecated("SepaDebit#iban is now visible and mutable.")
         class Builder : ObjectBuilder<SepaDebit> {
             private var iban: String? = null
 
@@ -390,6 +436,21 @@ data class PaymentMethodCreateParams internal constructor(
 
         private companion object {
             private const val PARAM_COUNTRY = "country"
+        }
+    }
+
+    @Parcelize
+    data class Netbanking(
+        internal var bank: String
+    ) : StripeParamsModel, Parcelable {
+        override fun toParamMap(): Map<String, Any> {
+            return mapOf(
+                PARAM_BANK to bank.toLowerCase(Locale.ROOT)
+            )
+        }
+
+        private companion object {
+            private const val PARAM_BANK = "bank"
         }
     }
 
@@ -512,6 +573,29 @@ data class PaymentMethodCreateParams internal constructor(
             return PaymentMethodCreateParams(sofort, billingDetails, metadata)
         }
 
+        @JvmStatic
+        @JvmOverloads
+        fun create(
+            upi: Upi,
+            billingDetails: PaymentMethod.BillingDetails? = null,
+            metadata: Map<String, String>? = null
+        ): PaymentMethodCreateParams {
+            return PaymentMethodCreateParams(upi, billingDetails, metadata)
+        }
+
+        /**
+         * @return params for creating a [PaymentMethod.Type.NetBanking] payment method
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun create(
+            netbanking: Netbanking,
+            billingDetails: PaymentMethod.BillingDetails? = null,
+            metadata: Map<String, String>? = null
+        ): PaymentMethodCreateParams {
+            return PaymentMethodCreateParams(netbanking, billingDetails, metadata)
+        }
+
         /**
          * @return params for creating a [PaymentMethod.Type.P24] payment method
          */
@@ -592,7 +676,7 @@ data class PaymentMethodCreateParams internal constructor(
             )
         }
 
-        @JvmSynthetic
+        @JvmStatic
         @JvmOverloads
         fun createOxxo(
             billingDetails: PaymentMethod.BillingDetails,
@@ -605,7 +689,7 @@ data class PaymentMethodCreateParams internal constructor(
             )
         }
 
-        @JvmSynthetic
+        @JvmStatic
         @JvmOverloads
         fun createAlipay(
             metadata: Map<String, String>? = null
@@ -616,7 +700,7 @@ data class PaymentMethodCreateParams internal constructor(
             )
         }
 
-        @JvmSynthetic
+        @JvmStatic
         @JvmOverloads
         fun createPayPal(
             metadata: Map<String, String>? = null

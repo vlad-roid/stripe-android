@@ -8,11 +8,16 @@ import com.stripe.android.model.CustomerFixtures
 import com.stripe.android.model.PaymentMethod
 import com.stripe.android.model.PaymentMethodFixtures
 import com.stripe.android.model.Source
+import com.stripe.android.networking.AbsFakeStripeRepository
+import com.stripe.android.networking.ApiRequest
+import com.stripe.android.networking.StripeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runBlockingTest
 import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -26,6 +31,11 @@ internal class CustomerSessionOperationExecutorTest {
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+    }
+
+    @AfterTest
+    fun cleanup() {
+        Dispatchers.resetMain()
     }
 
     @Test

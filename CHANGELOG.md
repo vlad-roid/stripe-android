@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 16.1.1 - 2020-11-25
+* [#3028](https://github.com/stripe/stripe-android/pull/3028) Upgrade Android Gradle Plugin to `4.1.1`
+* [#3035](https://github.com/stripe/stripe-android/pull/3035) Update handling of deeplinks in `PaymentAuthWebViewClient`
+* [#3046](https://github.com/stripe/stripe-android/pull/3046) Upgrade Gradle to `6.7.1`
+* [#3056](https://github.com/stripe/stripe-android/pull/3056) Upgrade Kotlin to `1.4.20`
+* [#3058](https://github.com/stripe/stripe-android/pull/3058) Migrate to Kotlin Parcelize plugin
+* [#3072](https://github.com/stripe/stripe-android/pull/3072) Fix crash in card widgets
+* [#3083](https://github.com/stripe/stripe-android/pull/3083) Upgrade `stripe-3ds2-android` to `4.1.2`
+    * Fix crash
+
+## 16.1.0 - 2020-11-06
+* [#2930](https://github.com/stripe/stripe-android/pull/2930) Upgrade Android Gradle Plugin to `4.1.0`
+* [#2936](https://github.com/stripe/stripe-android/pull/2936) Upgrade Gradle to `6.7`
+* [#2955](https://github.com/stripe/stripe-android/pull/2955) Add support for UPI payment method
+* [#2965](https://github.com/stripe/stripe-android/pull/2965) Add support for Netbanking payment method
+* [#2976](https://github.com/stripe/stripe-android/pull/2976) Update `ExpiryDateEditText` input allowlist
+* [#2977](https://github.com/stripe/stripe-android/pull/2977) Fix crash in `CardNumberTextInputLayout`
+* [#2981](https://github.com/stripe/stripe-android/pull/2981) Fix `PaymentMethodCreateParams` annotations on create methods
+* [#2988](https://github.com/stripe/stripe-android/pull/2988) Update `PaymentSession.handlePaymentData()` to take a nullable `Intent`
+* [#2989](https://github.com/stripe/stripe-android/pull/2989) Handle null `client_secret` in result `Intent`
+* [#2995](https://github.com/stripe/stripe-android/pull/2995) Upgrade constraintlayout to `2.0.4`
+* [#3006](https://github.com/stripe/stripe-android/pull/3006) Upgrade coroutines to `1.4.1`
+* [#3010](https://github.com/stripe/stripe-android/pull/3010) Upgrade `stripe-3ds2-android` to `4.1.1`
+    * Upgrade `bcprov-jdk15to18` to `1.6.7`
+    * Upgrade `nimbus-jose-jwt` to `9.1.2`
+
 ## 16.0.1 - 2020-10-06 
 * [#2894](https://github.com/stripe/stripe-android/pull/2894) Make `CardParams` constructor public
 * [#2895](https://github.com/stripe/stripe-android/pull/2895) Add support for configuring a footer layout in payment methods screen

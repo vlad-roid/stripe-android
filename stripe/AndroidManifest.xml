@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.stripe.android"
-    android:versionCode="110"
-    android:versionName="16.0.1">
+    package="com.stripe.android">
 
     <application>
         <activity
@@ -28,6 +26,13 @@
         <activity
             android:name=".paymentsheet.PaymentSheetActivity"
             android:theme="@style/StripePaymentSheetDefaultTheme" />
+        <activity
+            android:name=".paymentsheet.PaymentOptionsActivity"
+            android:theme="@style/StripePaymentSheetDefaultTheme" />
+
+        <activity
+            android:name=".googlepay.StripeGooglePayActivity"
+            android:theme="@style/StripeGooglePayDefaultTheme" />
     </application>
 
 </manifest>

@@ -2,57 +2,69 @@ package com.stripe.android.paymentsheet
 
 import android.os.Bundle
 import android.view.View
-import androidx.fragment.app.Fragment
+import android.widget.TextView
+import androidx.annotation.VisibleForTesting
 import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
-import androidx.lifecycle.ViewModel
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.stripe.android.R
-import com.stripe.android.databinding.FragmentPaymentsheetPaymentMethodsListBinding
-import com.stripe.android.paymentsheet.model.PaymentSelection
+import java.util.Currency
+import java.util.Locale
 
-internal class PaymentSheetPaymentMethodsListFragment : Fragment(R.layout.fragment_paymentsheet_payment_methods_list) {
+internal class PaymentSheetPaymentMethodsListFragment : BasePaymentMethodsListFragment() {
     private val activityViewModel by activityViewModels<PaymentSheetViewModel> {
-        PaymentSheetViewModel.Factory(requireActivity().application)
+        PaymentSheetViewModel.Factory(
+            { requireActivity().application },
+            {
+                requireNotNull(
+                    requireArguments().getParcelable(PaymentSheetActivity.EXTRA_STARTER_ARGS)
+                )
+            }
+        )
     }
 
-    private val fragmentViewModel by viewModels<VM>()
+    override val sheetViewModel: PaymentSheetViewModel by lazy { activityViewModel }
+
+    override val shouldShowGooglePay: Boolean by lazy {
+        sheetViewModel.isGooglePayReady.value == true
+    }
+
+    private val currencyFormatter = CurrencyFormatter()
+
+    internal val header: TextView by lazy { viewBinding.header }
+
+    override fun transitionToAddPaymentMethod() {
+        activityViewModel.transitionTo(
+            PaymentSheetViewModel.TransitionTarget.AddPaymentMethodFull
+        )
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (activity == null) {
-            return
-        }
-
-        // If we're returning to this fragment from elsewhere, we need to reset the selection to whatever
-        // the user had selected previously
-        activityViewModel.updateSelection(fragmentViewModel.selectedPaymentMethod)
-
-        val binding = FragmentPaymentsheetPaymentMethodsListBinding.bind(view)
-        binding.recycler.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-
-        activityViewModel.paymentMethods.observe(viewLifecycleOwner) { paymentMethods ->
-            binding.recycler.adapter = PaymentSheetPaymentMethodsAdapter(
-                paymentMethods,
-                fragmentViewModel.selectedPaymentMethod,
-                paymentMethodSelectedListener = {
-                    fragmentViewModel.selectedPaymentMethod = it
-                    activityViewModel.updateSelection(it)
-                },
-                addCardClickListener = {
-                    activityViewModel.transitionTo(PaymentSheetViewModel.TransitionTarget.AddCard)
-                }
-            )
-        }
-
         // Only fetch the payment methods list if we haven't already
         if (activityViewModel.paymentMethods.value == null) {
-            activityViewModel.updatePaymentMethods(requireActivity().intent)
+            activityViewModel.updatePaymentMethods()
         }
+
+        viewBinding.header.setText(R.string.stripe_paymentsheet_pay_using)
+        activityViewModel.paymentIntent
+            .observe(viewLifecycleOwner) { paymentIntent ->
+                if (paymentIntent == null) {
+                    // ignore null
+                } else if (paymentIntent.currency != null && paymentIntent.amount != null) {
+                    updateHeader(paymentIntent.amount, paymentIntent.currency)
+                }
+            }
     }
 
-    internal class VM : ViewModel() {
-        internal var selectedPaymentMethod: PaymentSelection? = null
+    @VisibleForTesting
+    internal fun updateHeader(
+        amount: Long,
+        currencyCode: String
+    ) {
+        val currency = Currency.getInstance(currencyCode.toUpperCase(Locale.ROOT))
+        header.text = getString(
+            R.string.stripe_paymentsheet_pay_using_with_amount,
+            currencyFormatter.format(amount, currency)
+        )
     }
 }

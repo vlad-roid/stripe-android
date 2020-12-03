@@ -4,11 +4,7 @@ import android.view.ViewGroup
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
-import com.stripe.android.AnalyticsDataFactory
-import com.stripe.android.AnalyticsRequest
-import com.stripe.android.AnalyticsRequestExecutor
 import com.stripe.android.ApiKeyFixtures
-import com.stripe.android.ApiRequest
 import com.stripe.android.CardNumberFixtures
 import com.stripe.android.CardNumberFixtures.AMEX_BIN
 import com.stripe.android.CardNumberFixtures.AMEX_NO_SPACES
@@ -30,12 +26,14 @@ import com.stripe.android.R
 import com.stripe.android.cards.AccountRangeFixtures
 import com.stripe.android.cards.CardAccountRangeRepository
 import com.stripe.android.cards.CardNumber
-import com.stripe.android.cards.LegacyCardAccountRangeRepository
 import com.stripe.android.cards.NullCardAccountRangeRepository
 import com.stripe.android.cards.StaticCardAccountRangeSource
 import com.stripe.android.cards.StaticCardAccountRanges
 import com.stripe.android.model.AccountRange
 import com.stripe.android.model.CardBrand
+import com.stripe.android.networking.AnalyticsDataFactory
+import com.stripe.android.networking.AnalyticsRequest
+import com.stripe.android.networking.AnalyticsRequestExecutor
 import com.stripe.android.testharness.ViewTestUtils
 import com.stripe.android.utils.TestUtils.idleLooper
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +44,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runBlockingTest
-import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.LooperMode
@@ -78,14 +75,11 @@ internal class CardNumberEditTextTest {
         lastBrandChangeCallbackInvocation = it
     }
 
-    private val cardAccountRangeRepository = LegacyCardAccountRangeRepository(
-        StaticCardAccountRangeSource()
-    )
+    private val cardAccountRangeRepository = FakeCardAccountRangeRepository()
 
     private val analyticsRequestExecutor = AnalyticsRequestExecutor {}
     private val analyticsRequestFactory = AnalyticsRequest.Factory()
     private val analyticsDataFactory = AnalyticsDataFactory(context, ApiKeyFixtures.DEFAULT_PUBLISHABLE_KEY)
-    private val publishableKeySupplier = { ApiKeyFixtures.DEFAULT_PUBLISHABLE_KEY }
 
     private val cardNumberEditText = CardNumberEditText(
         context,
@@ -93,8 +87,7 @@ internal class CardNumberEditTextTest {
         cardAccountRangeRepository = cardAccountRangeRepository,
         analyticsRequestExecutor = analyticsRequestExecutor,
         analyticsRequestFactory = analyticsRequestFactory,
-        analyticsDataFactory = analyticsDataFactory,
-        publishableKeySupplier = publishableKeySupplier
+        analyticsDataFactory = analyticsDataFactory
     ).also {
         it.completionCallback = completionCallback
         it.brandChangeCallback = brandChangeCallback
@@ -136,7 +129,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun calculateCursorPosition_whenAmEx_increasesIndexWhenGoingPastTheSpaces() = testDispatcher.runBlockingTest {
-        Dispatchers.setMain(testDispatcher)
         cardNumberEditText.onAccountRangeResult(
             AccountRangeFixtures.AMERICANEXPRESS
         )
@@ -151,7 +143,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun calculateCursorPosition_whenDinersClub16_decreasesIndexWhenDeletingPastTheSpaces() = testDispatcher.runBlockingTest {
-        Dispatchers.setMain(testDispatcher)
         cardNumberEditText.onAccountRangeResult(
             AccountRangeFixtures.DINERSCLUB16
         )
@@ -169,7 +160,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun calculateCursorPosition_whenDeletingNotOnGaps_doesNotDecreaseIndex() = testDispatcher.runBlockingTest {
-        Dispatchers.setMain(testDispatcher)
         cardNumberEditText.onAccountRangeResult(
             AccountRangeFixtures.DINERSCLUB14
         )
@@ -181,7 +171,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun calculateCursorPosition_whenAmEx_decreasesIndexWhenDeletingPastTheSpaces() = testDispatcher.runBlockingTest {
-        Dispatchers.setMain(testDispatcher)
         cardNumberEditText.onAccountRangeResult(
             AccountRangeFixtures.AMERICANEXPRESS
         )
@@ -196,7 +185,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun calculateCursorPosition_whenSelectionInTheMiddle_increasesIndexOverASpace() = testDispatcher.runBlockingTest {
-        Dispatchers.setMain(testDispatcher)
         cardNumberEditText.onAccountRangeResult(
             AccountRangeFixtures.VISA
         )
@@ -235,7 +223,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun setText_whenTextIsValidCommonLengthNumber_changesCardValidState() {
-        Dispatchers.setMain(testDispatcher)
         updateCardNumberAndIdle(VISA_WITH_SPACES)
 
         assertThat(cardNumberEditText.isCardNumberValid)
@@ -246,7 +233,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun setText_whenTextIsSpacelessValidNumber_changesToSpaceNumberAndValidates() {
-        Dispatchers.setMain(testDispatcher)
         updateCardNumberAndIdle(VISA_NO_SPACES)
 
         assertThat(cardNumberEditText.isCardNumberValid)
@@ -263,8 +249,7 @@ internal class CardNumberEditTextTest {
             cardAccountRangeRepository = NullCardAccountRangeRepository(),
             analyticsRequestExecutor = analyticsRequestExecutor,
             analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = publishableKeySupplier
+            analyticsDataFactory = analyticsDataFactory
         )
 
         var callbacks = 0
@@ -296,8 +281,7 @@ internal class CardNumberEditTextTest {
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
             analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = publishableKeySupplier
+            analyticsDataFactory = analyticsDataFactory
         )
 
         var callbacks = 0
@@ -329,8 +313,7 @@ internal class CardNumberEditTextTest {
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
             analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = publishableKeySupplier
+            analyticsDataFactory = analyticsDataFactory
         )
 
         cardNumberEditText.setText("6216828050000000000")
@@ -348,8 +331,7 @@ internal class CardNumberEditTextTest {
             cardAccountRangeRepository = NullCardAccountRangeRepository(),
             analyticsRequestExecutor = analyticsRequestExecutor,
             analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = publishableKeySupplier
+            analyticsDataFactory = analyticsDataFactory
         )
 
         cardNumberEditText.setText(UNIONPAY_NO_SPACES)
@@ -377,7 +359,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun `full Amex typed typed at once should change isCardNumberValid to true and invoke completion callback`() {
-        Dispatchers.setMain(testDispatcher)
         updateCardNumberAndIdle(AMEX_NO_SPACES)
         idleLooper()
 
@@ -709,8 +690,7 @@ internal class CardNumberEditTextTest {
                         cardAccountRangeRepository = DelayedCardAccountRangeRepository(),
                         analyticsRequestExecutor = analyticsRequestExecutor,
                         analyticsRequestFactory = analyticsRequestFactory,
-                        analyticsDataFactory = analyticsDataFactory,
-                        publishableKeySupplier = publishableKeySupplier
+                        analyticsDataFactory = analyticsDataFactory
                     )
 
                     val root = activity.findViewById<ViewGroup>(R.id.add_payment_method_card).also {
@@ -747,8 +727,7 @@ internal class CardNumberEditTextTest {
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
             analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = publishableKeySupplier
+            analyticsDataFactory = analyticsDataFactory
         )
 
         cardNumberEditText.setText(VISA_BIN)
@@ -759,8 +738,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun `when first digit matches a single account, show a card brand`() {
-        Dispatchers.setMain(testDispatcher)
-
         // matches Visa
         updateCardNumberAndIdle("4")
         assertThat(lastBrandChangeCallbackInvocation)
@@ -769,8 +746,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun `when first digit matches multiple accounts, don't show a card brand`() {
-        Dispatchers.setMain(testDispatcher)
-
         // matches Discover and Union Pay
         updateCardNumberAndIdle("6")
         assertThat(lastBrandChangeCallbackInvocation)
@@ -779,8 +754,6 @@ internal class CardNumberEditTextTest {
 
     @Test
     fun `getAccountRange() should only be called when necessary`() {
-        Dispatchers.setMain(testDispatcher)
-
         var repositoryCalls = 0
         val cardNumberEditText = CardNumberEditText(
             context,
@@ -797,8 +770,7 @@ internal class CardNumberEditTextTest {
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
             analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = publishableKeySupplier
+            analyticsDataFactory = analyticsDataFactory
         )
 
         // 620000 - valid BIN, call repo
@@ -859,8 +831,7 @@ internal class CardNumberEditTextTest {
                 analyticsRequests.add(it)
             },
             analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = publishableKeySupplier
+            analyticsDataFactory = analyticsDataFactory
         )
         cardNumberEditText.setText(UNIONPAY_NO_SPACES)
         idleLooper()
@@ -868,28 +839,6 @@ internal class CardNumberEditTextTest {
             .hasSize(1)
         assertThat(analyticsRequests.first().params["event"])
             .isEqualTo("stripe_android.card_metadata_loaded_too_slow")
-    }
-
-    @Test
-    fun `onCardMetadataLoadedTooSlow() when publishable key is unavailable uses undefined publishable key`() {
-        val analyticsRequests = mutableListOf<AnalyticsRequest>()
-
-        CardNumberEditText(
-            context,
-            workContext = testDispatcher,
-            cardAccountRangeRepository = cardAccountRangeRepository,
-            analyticsRequestExecutor = {
-                analyticsRequests.add(it)
-            },
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory,
-            publishableKeySupplier = {
-                throw RuntimeException()
-            }
-        ).onCardMetadataLoadedTooSlow()
-
-        assertThat(analyticsRequests.first().options.apiKey)
-            .isEqualTo(ApiRequest.Options.UNDEFINED_PUBLISHABLE_KEY)
     }
 
     private fun verifyCardBrandBin(
@@ -914,6 +863,19 @@ internal class CardNumberEditTextTest {
         ): AccountRange? {
             delay(TimeUnit.SECONDS.toMillis(10))
             return null
+        }
+
+        override val loading: Flow<Boolean> = flowOf(false)
+    }
+
+    private class FakeCardAccountRangeRepository : CardAccountRangeRepository {
+        private val staticCardAccountRangeSource = StaticCardAccountRangeSource()
+        override suspend fun getAccountRange(
+            cardNumber: CardNumber.Unvalidated
+        ): AccountRange? {
+            return cardNumber.bin?.let {
+                staticCardAccountRangeSource.getAccountRange(cardNumber)
+            }
         }
 
         override val loading: Flow<Boolean> = flowOf(false)

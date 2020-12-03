@@ -17,7 +17,6 @@ import com.stripe.android.CardNumberFixtures.DINERS_CLUB_14_WITH_SPACES
 import com.stripe.android.CardNumberFixtures.VISA_NO_SPACES
 import com.stripe.android.CardNumberFixtures.VISA_WITH_SPACES
 import com.stripe.android.PaymentConfiguration
-import com.stripe.android.R
 import com.stripe.android.cards.AccountRangeFixtures
 import com.stripe.android.cards.DefaultCardAccountRangeStore
 import com.stripe.android.model.Address
@@ -36,7 +35,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.util.Calendar
@@ -52,11 +50,13 @@ internal class CardInputWidgetTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val activityScenarioFactory = ActivityScenarioFactory(context)
 
-    private lateinit var cardInputWidget: CardInputWidget
-    private val cardNumberEditText: CardNumberEditText by lazy {
-        cardInputWidget.cardNumberEditText.also {
-            it.workContext = testDispatcher
+    private val cardInputWidget: CardInputWidget by lazy {
+        activityScenarioFactory.createView {
+            createCardInputWidget(it)
         }
+    }
+    private val cardNumberEditText: CardNumberEditText by lazy {
+        cardInputWidget.cardNumberEditText
     }
     private val expiryEditText: StripeEditText by lazy {
         cardInputWidget.expiryDateEditText
@@ -79,8 +79,6 @@ internal class CardInputWidgetTest {
         assertThat(Calendar.getInstance().get(Calendar.YEAR) < 2050)
             .isTrue()
 
-        Dispatchers.setMain(testDispatcher)
-
         PaymentConfiguration.init(context, ApiKeyFixtures.DEFAULT_PUBLISHABLE_KEY)
 
         // populate store with data to circumvent network requests that cause flakiness
@@ -96,22 +94,6 @@ internal class CardInputWidgetTest {
             BinFixtures.DINERSCLUB14,
             listOf(AccountRangeFixtures.DINERSCLUB14)
         )
-
-        activityScenarioFactory.create<AddPaymentMethodActivity>(
-            AddPaymentMethodActivityStarter.Args.Builder()
-                .setPaymentMethodType(PaymentMethod.Type.Card)
-                .setPaymentConfiguration(PaymentConfiguration.getInstance(context))
-                .setBillingAddressFields(BillingAddressFields.PostalCode)
-                .build()
-        ).use { activityScenario ->
-            activityScenario.onActivity { activity ->
-                activity.findViewById<ViewGroup>(R.id.add_payment_method_card).let { root ->
-                    root.removeAllViews()
-                    cardInputWidget = createCardInputWidget(activity)
-                    root.addView(cardInputWidget)
-                }
-            }
-        }
     }
 
     @AfterTest
@@ -140,6 +122,8 @@ internal class CardInputWidgetTest {
 
             it.viewTreeObserver
                 .addOnGlobalFocusChangeListener(onGlobalFocusChangeListener)
+
+            it.cardNumberEditText.workContext = testDispatcher
         }
     }
 

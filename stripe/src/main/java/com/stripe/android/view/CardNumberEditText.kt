@@ -8,22 +8,19 @@ import android.text.InputType
 import android.util.AttributeSet
 import android.view.View
 import androidx.annotation.VisibleForTesting
-import com.stripe.android.AnalyticsDataFactory
 import com.stripe.android.AnalyticsEvent
-import com.stripe.android.AnalyticsRequest
-import com.stripe.android.AnalyticsRequestExecutor
-import com.stripe.android.ApiRequest
 import com.stripe.android.PaymentConfiguration
 import com.stripe.android.R
 import com.stripe.android.cards.CardAccountRangeRepository
 import com.stripe.android.cards.CardNumber
 import com.stripe.android.cards.DefaultCardAccountRangeRepositoryFactory
 import com.stripe.android.cards.DefaultStaticCardAccountRanges
-import com.stripe.android.cards.LegacyCardAccountRangeRepository
-import com.stripe.android.cards.StaticCardAccountRangeSource
 import com.stripe.android.cards.StaticCardAccountRanges
 import com.stripe.android.model.AccountRange
 import com.stripe.android.model.CardBrand
+import com.stripe.android.networking.AnalyticsDataFactory
+import com.stripe.android.networking.AnalyticsRequest
+import com.stripe.android.networking.AnalyticsRequestExecutor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,8 +44,7 @@ open class CardNumberEditText internal constructor(
     private val staticCardAccountRanges: StaticCardAccountRanges = DefaultStaticCardAccountRanges(),
     private val analyticsRequestExecutor: AnalyticsRequestExecutor,
     private val analyticsRequestFactory: AnalyticsRequest.Factory,
-    private val analyticsDataFactory: AnalyticsDataFactory,
-    private val publishableKeySupplier: () -> String
+    private val analyticsDataFactory: AnalyticsDataFactory
 ) : StripeEditText(context, attrs, defStyleAttr) {
 
     @JvmOverloads
@@ -75,21 +71,14 @@ open class CardNumberEditText internal constructor(
         attrs,
         defStyleAttr,
         workContext,
-
-        when (USE_DEFAULT_CARD_ACCOUNT_RANGE_REPO) {
-            true -> DefaultCardAccountRangeRepositoryFactory(context).create()
-            false -> LegacyCardAccountRangeRepository(StaticCardAccountRangeSource())
-        },
-
+        DefaultCardAccountRangeRepositoryFactory(context).create(),
         DefaultStaticCardAccountRanges(),
         AnalyticsRequestExecutor.Default(),
         AnalyticsRequest.Factory(),
         AnalyticsDataFactory(
             context,
             publishableKeySupplier = publishableKeySupplier
-        ),
-
-        publishableKeySupplier
+        )
     )
 
     @VisibleForTesting
@@ -170,7 +159,7 @@ open class CardNumberEditText internal constructor(
     @JvmSynthetic
     internal var isLoadingCallback: (Boolean) -> Unit = {}
 
-    private val loadingJob: Job
+    private var loadingJob: Job? = null
 
     init {
         inputType = InputType.TYPE_CLASS_NUMBER
@@ -182,10 +171,15 @@ open class CardNumberEditText internal constructor(
         }
 
         updateLengthFilter()
+    }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
         loadingJob = CoroutineScope(workContext).launch {
             cardAccountRangeRepository.loading.collect {
-                isLoadingCallback(it)
+                withContext(Dispatchers.Main) {
+                    isLoadingCallback(it)
+                }
             }
         }
     }
@@ -196,7 +190,9 @@ open class CardNumberEditText internal constructor(
         }
 
     override fun onDetachedFromWindow() {
-        loadingJob.cancel()
+        loadingJob?.cancel()
+        loadingJob = null
+
         cancelAccountRangeRepositoryJob()
 
         super.onDetachedFromWindow()
@@ -296,12 +292,7 @@ open class CardNumberEditText internal constructor(
     internal fun onCardMetadataLoadedTooSlow() {
         analyticsRequestExecutor.executeAsync(
             analyticsRequestFactory.create(
-                analyticsDataFactory.createParams(AnalyticsEvent.CardMetadataLoadedTooSlow),
-                ApiRequest.Options(
-                    runCatching {
-                        publishableKeySupplier()
-                    }.getOrDefault(ApiRequest.Options.UNDEFINED_PUBLISHABLE_KEY)
-                )
+                analyticsDataFactory.createParams(AnalyticsEvent.CardMetadataLoadedTooSlow)
             )
         )
     }
@@ -452,9 +443,5 @@ open class CardNumberEditText internal constructor(
             CardBrand.UnionPay -> true
             else -> false
         }
-    }
-
-    private companion object {
-        private const val USE_DEFAULT_CARD_ACCOUNT_RANGE_REPO = true
     }
 }

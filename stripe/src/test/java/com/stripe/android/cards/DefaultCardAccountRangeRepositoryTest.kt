@@ -6,15 +6,15 @@ import com.google.common.truth.Truth.assertThat
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
-import com.stripe.android.AnalyticsDataFactory
-import com.stripe.android.AnalyticsRequest
 import com.stripe.android.ApiKeyFixtures
-import com.stripe.android.ApiRequest
 import com.stripe.android.CardNumberFixtures
-import com.stripe.android.StripeApiRepository
 import com.stripe.android.model.AccountRange
 import com.stripe.android.model.BinFixtures
 import com.stripe.android.model.BinRange
+import com.stripe.android.networking.AnalyticsDataFactory
+import com.stripe.android.networking.AnalyticsRequest
+import com.stripe.android.networking.ApiRequest
+import com.stripe.android.networking.StripeApiRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -96,7 +96,14 @@ internal class DefaultCardAccountRangeRepositoryTest {
         )
         assertThat(
             realStore.get(BinFixtures.MASTERCARD)
-        ).isEmpty()
+        ).containsExactly(
+            AccountRange(
+                binRange = BinRange(low = "5555550000000000", high = "5555550099999999"),
+                panLength = 16,
+                brandInfo = AccountRange.BrandInfo.Mastercard,
+                country = "BR"
+            )
+        )
 
         assertThat(
             realRepository.getAccountRange(
@@ -209,8 +216,7 @@ internal class DefaultCardAccountRangeRepositoryTest {
             store,
             { },
             AnalyticsRequest.Factory(),
-            AnalyticsDataFactory(application, publishableKey),
-            publishableKey
+            AnalyticsDataFactory(application, publishableKey)
         )
     }
 

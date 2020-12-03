@@ -4,7 +4,7 @@ import android.os.Parcelable
 import com.stripe.android.ObjectBuilder
 import com.stripe.android.model.parsers.PaymentMethodJsonParser
 import com.stripe.android.model.wallets.Wallet
-import kotlinx.android.parcel.Parcelize
+import kotlinx.parcelize.Parcelize
 import org.json.JSONObject
 
 /**
@@ -113,7 +113,9 @@ data class PaymentMethod internal constructor(
 
     @JvmField val bacsDebit: BacsDebit? = null,
 
-    @JvmField val sofort: Sofort? = null
+    @JvmField val sofort: Sofort? = null,
+
+    @JvmField val upi: Upi? = null
 ) : StripeModel {
 
     @Parcelize
@@ -129,6 +131,7 @@ data class PaymentMethod internal constructor(
         AuBecsDebit("au_becs_debit", isReusable = true),
         BacsDebit("bacs_debit", isReusable = true),
         Sofort("sofort", isReusable = false),
+        Upi("upi", isReusable = false),
         P24("p24", isReusable = false),
         Bancontact("bancontact", isReusable = false),
         Giropay("giropay", isReusable = false),
@@ -137,7 +140,8 @@ data class PaymentMethod internal constructor(
         Alipay("alipay", isReusable = false),
         GrabPay("grabpay", isReusable = false),
         PayPal("paypal", isReusable = false),
-        AfterpayClearpay("afterpay_clearpay", isReusable = false);
+        AfterpayClearpay("afterpay_clearpay", isReusable = false),
+        Netbanking("netbanking", isReusable = false);
 
         override fun toString(): String {
             return code
@@ -167,6 +171,8 @@ data class PaymentMethod internal constructor(
         private var auBecsDebit: AuBecsDebit? = null
         private var bacsDebit: BacsDebit? = null
         private var sofort: Sofort? = null
+        private var netbanking: Netbanking? = null
+        private var upi: Upi? = null
 
         fun setId(id: String?): Builder = apply {
             this.id = id
@@ -226,6 +232,14 @@ data class PaymentMethod internal constructor(
 
         fun setSofort(sofort: Sofort?): Builder = apply {
             this.sofort = sofort
+        }
+
+        fun setNetbanking(netbanking: Netbanking?): Builder = apply {
+            this.netbanking = netbanking
+        }
+
+        fun setUpi(upi: Upi?): Builder = apply {
+            this.upi = upi
         }
 
         override fun build(): PaymentMethod {
@@ -659,6 +673,21 @@ data class PaymentMethod internal constructor(
     @Parcelize
     data class Sofort internal constructor(
         @JvmField val country: String?
+    ) : StripeModel
+
+    @Parcelize
+    data class Upi internal constructor(
+        @JvmField val vpa: String?
+    ) : StripeModel
+
+    @Parcelize
+    data class Netbanking internal constructor(
+        /**
+         * The customer’s bank.
+         *
+         * [netbanking.bank](https://stripe.com/docs/payments/netbanking/banks)
+         */
+        @JvmField val bank: String?
     ) : StripeModel
 
     companion object {
