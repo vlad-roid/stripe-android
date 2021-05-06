@@ -11,7 +11,6 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.View.OnFocusChangeListener
 import android.view.animation.Animation
 import android.view.animation.AnimationSet
 import android.view.animation.Transformation
@@ -22,6 +21,7 @@ import androidx.annotation.ColorInt
 import androidx.annotation.IdRes
 import androidx.annotation.IntRange
 import androidx.annotation.VisibleForTesting
+import androidx.core.content.withStyledAttributes
 import androidx.core.os.bundleOf
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
@@ -50,12 +50,16 @@ import kotlin.properties.Delegates
  *
  * The individual `EditText` views of this widget can be styled by defining a style
  * `Stripe.CardInputWidget.EditText` that extends `Stripe.Base.CardInputWidget.EditText`.
+ *
+ * The card number, cvc, and expiry date will always be left to right regardless of locale.  Postal
+ * code layout direction will be set according to the locale.
  */
 class CardInputWidget @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr), CardWidget {
+    private var customCvcLabel: String? = null
     private val viewBinding = CardInputWidgetBinding.inflate(
         LayoutInflater.from(context),
         this
@@ -255,7 +259,8 @@ class CardInputWidget @JvmOverloads constructor(
                 else -> {
                     shouldShowErrorIcon = false
                     return CardParams(
-                        setOf(LOGGING_TOKEN),
+                        brand = brand,
+                        loggingTokens = setOf(LOGGING_TOKEN),
                         number = cardNumber.value,
                         expMonth = expirationDate.month,
                         expYear = expirationDate.year,
@@ -702,7 +707,7 @@ class CardInputWidget @JvmOverloads constructor(
     }
 
     private fun initView(attrs: AttributeSet?) {
-        attrs?.let { applyAttributes(it) }
+        applyCardElementAttributes(attrs)
 
         ViewCompat.setAccessibilityDelegate(
             cardNumberEditText,
@@ -724,28 +729,25 @@ class CardInputWidget @JvmOverloads constructor(
         @ColorInt var errorColorInt = cardNumberEditText.defaultErrorColorInt
         cardBrandView.tintColorInt = cardNumberEditText.hintTextColors.defaultColor
         var cardHintText: String? = null
-        val shouldRequestFocus: Boolean
-        if (attrs != null) {
-            val a = context.theme.obtainStyledAttributes(
-                attrs,
-                R.styleable.CardInputView,
-                0,
-                0
+        var shouldRequestFocus = true
+
+        context.withStyledAttributes(
+            attrs,
+            R.styleable.CardInputView
+        ) {
+            cardBrandView.tintColorInt = getColor(
+                R.styleable.CardInputView_cardTint,
+                cardBrandView.tintColorInt
             )
 
-            try {
-                cardBrandView.tintColorInt = a.getColor(
-                    R.styleable.CardInputView_cardTint,
-                    cardBrandView.tintColorInt
-                )
-                errorColorInt = a.getColor(R.styleable.CardInputView_cardTextErrorColor, errorColorInt)
-                cardHintText = a.getString(R.styleable.CardInputView_cardHintText)
-                shouldRequestFocus = a.getBoolean(R.styleable.CardInputView_android_focusedByDefault, true)
-            } finally {
-                a.recycle()
-            }
-        } else {
-            shouldRequestFocus = true
+            errorColorInt = getColor(
+                R.styleable.CardInputView_cardTextErrorColor, errorColorInt
+            )
+            cardHintText = getString(R.styleable.CardInputView_cardHintText)
+            shouldRequestFocus = getBoolean(
+                R.styleable.CardInputView_android_focusedByDefault,
+                true
+            )
         }
 
         cardHintText?.let {
@@ -754,17 +756,24 @@ class CardInputWidget @JvmOverloads constructor(
 
         currentFields.forEach { it.setErrorColor(errorColorInt) }
 
-        cardNumberEditText.onFocusChangeListener = OnFocusChangeListener { _, hasFocus ->
+        cardNumberEditText.internalFocusChangeListeners.add { _, hasFocus ->
             if (hasFocus) {
                 scrollStart()
                 cardInputListener?.onFocusChange(CardInputListener.FocusField.CardNumber)
             }
         }
 
-        expiryDateEditText.onFocusChangeListener = OnFocusChangeListener { _, hasFocus ->
+        expiryDateEditText.internalFocusChangeListeners.add { _, hasFocus ->
             if (hasFocus) {
                 scrollEnd()
                 cardInputListener?.onFocusChange(CardInputListener.FocusField.ExpiryDate)
+            }
+        }
+
+        postalCodeEditText.internalFocusChangeListeners.add { _, hasFocus ->
+            if (hasFocus) {
+                scrollEnd()
+                cardInputListener?.onFocusChange(CardInputListener.FocusField.PostalCode)
             }
         }
 
@@ -772,7 +781,7 @@ class CardInputWidget @JvmOverloads constructor(
         cvcEditText.setDeleteEmptyListener(BackUpFieldDeleteListener(expiryDateEditText))
         postalCodeEditText.setDeleteEmptyListener(BackUpFieldDeleteListener(cvcEditText))
 
-        cvcEditText.onFocusChangeListener = OnFocusChangeListener { _, hasFocus ->
+        cvcEditText.internalFocusChangeListeners.add { _, hasFocus ->
             cardBrandView.shouldShowCvc = hasFocus
 
             if (hasFocus) {
@@ -795,7 +804,7 @@ class CardInputWidget @JvmOverloads constructor(
         cardNumberEditText.brandChangeCallback = { brand ->
             cardBrandView.brand = brand
             hiddenCardText = createHiddenCardText(cardNumberEditText.panLength)
-            cvcEditText.updateBrand(brand)
+            updateCvc()
         }
 
         expiryDateEditText.completionCallback = {
@@ -825,6 +834,21 @@ class CardInputWidget @JvmOverloads constructor(
     }
 
     /**
+     * Set an optional CVC field label to override defaults, or `null` to use defaults.
+     */
+    fun setCvcLabel(cvcLabel: String?) {
+        customCvcLabel = cvcLabel
+        updateCvc()
+    }
+
+    private fun updateCvc() {
+        cvcEditText.updateBrand(
+            cardBrandView.brand,
+            customCvcLabel
+        )
+    }
+
+    /**
      * @return a [String] that is the length of a full formatted PAN for the given PAN length,
      * without the last group of digits. This is used for measuring the rendered width of the
      * hidden portion (i.e. when the card number is "peeking") and does not have to be a valid
@@ -848,29 +872,23 @@ class CardInputWidget @JvmOverloads constructor(
         )
     }
 
-    private fun applyAttributes(attrs: AttributeSet) {
-        val typedArray = context.theme.obtainStyledAttributes(
+    private fun applyCardElementAttributes(attrs: AttributeSet?) {
+        context.withStyledAttributes(
             attrs,
-            R.styleable.CardElement,
-            0,
-            0
-        )
-
-        try {
-            postalCodeEnabled = typedArray.getBoolean(
+            R.styleable.CardElement
+        ) {
+            postalCodeEnabled = getBoolean(
                 R.styleable.CardElement_shouldShowPostalCode,
-                CardWidget.DEFAULT_POSTAL_CODE_ENABLED
+                postalCodeEnabled
             )
-            postalCodeRequired = typedArray.getBoolean(
+            postalCodeRequired = getBoolean(
                 R.styleable.CardElement_shouldRequirePostalCode,
-                CardWidget.DEFAULT_POSTAL_CODE_REQUIRED
+                postalCodeRequired
             )
-            usZipCodeRequired = typedArray.getBoolean(
+            usZipCodeRequired = getBoolean(
                 R.styleable.CardElement_shouldRequireUsZipCode,
-                CardWidget.DEFAULT_US_ZIP_CODE_REQUIRED
+                usZipCodeRequired
             )
-        } finally {
-            typedArray.recycle()
         }
     }
 
@@ -1108,7 +1126,8 @@ class CardInputWidget @JvmOverloads constructor(
         override fun applyTransformation(interpolatedTime: Float, t: Transformation) {
             super.applyTransformation(interpolatedTime, t)
             view.updateLayoutParams<FrameLayout.LayoutParams> {
-                this.marginStart = (interpolatedTime * destination + (1 - interpolatedTime) * startPosition).toInt()
+                this.marginStart =
+                    (interpolatedTime * destination + (1 - interpolatedTime) * startPosition).toInt()
                 this.marginEnd = 0
                 this.width = newWidth
             }

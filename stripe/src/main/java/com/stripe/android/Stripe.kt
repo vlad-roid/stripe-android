@@ -3,10 +3,13 @@ package com.stripe.android
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import androidx.activity.ComponentActivity
 import androidx.annotation.Size
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.lifecycle.lifecycleScope
 import com.stripe.android.exception.APIConnectionException
 import com.stripe.android.exception.APIException
 import com.stripe.android.exception.AuthenticationException
@@ -31,10 +34,10 @@ import com.stripe.android.model.Source
 import com.stripe.android.model.SourceParams
 import com.stripe.android.model.StripeFile
 import com.stripe.android.model.StripeFileParams
-import com.stripe.android.model.StripeIntent
 import com.stripe.android.model.StripeModel
 import com.stripe.android.model.Token
 import com.stripe.android.model.TokenParams
+import com.stripe.android.model.WeChatPayNextAction
 import com.stripe.android.networking.ApiRequest
 import com.stripe.android.networking.StripeApiRepository
 import com.stripe.android.networking.StripeRepository
@@ -59,13 +62,13 @@ import kotlin.coroutines.CoroutineContext
  *
  */
 class Stripe internal constructor(
-    private val stripeRepository: StripeRepository,
-    private val paymentController: PaymentController,
+    internal val stripeRepository: StripeRepository,
+    internal val paymentController: PaymentController,
     publishableKey: String,
-    private val stripeAccountId: String? = null,
+    internal val stripeAccountId: String? = null,
     private val workContext: CoroutineContext = Dispatchers.IO
 ) {
-    private val publishableKey: String = ApiKeyValidator().requireValid(publishableKey)
+    internal val publishableKey: String = ApiKeyValidator().requireValid(publishableKey)
 
     /**
      * Constructor with publishable key and Stripe Connect account id.
@@ -76,20 +79,25 @@ class Stripe internal constructor(
      * @param enableLogging enable logging in the Stripe and Stripe 3DS2 SDKs; disabled by default.
      * It is recommended to disable logging in production. Logs can be accessed from the command line using
      * `adb logcat -s StripeSdk`
+     * @param betas optional, set of beta flags to pass to the Stripe API. Setting this property is
+     * not sufficient to participate in a beta, and passing a beta you are not registered
+     * in will result in API errors.
      */
     @JvmOverloads
     constructor(
         context: Context,
         publishableKey: String,
         stripeAccountId: String? = null,
-        enableLogging: Boolean = false
+        enableLogging: Boolean = false,
+        betas: Set<StripeApiBeta> = emptySet()
     ) : this(
         context.applicationContext,
         StripeApiRepository(
             context.applicationContext,
             publishableKey,
             appInfo,
-            Logger.getInstance(enableLogging)
+            Logger.getInstance(enableLogging),
+            betas = betas
         ),
         ApiKeyValidator.get().requireValid(publishableKey),
         stripeAccountId,
@@ -135,6 +143,22 @@ class Stripe internal constructor(
      * Confirm and, if necessary, authenticate a [PaymentIntent].
      * Used for [automatic confirmation](https://stripe.com/docs/payments/payment-intents/quickstart#automatic-confirmation-flow) flow.
      *
+     * For confirmation attempts that require 3DS1 authentication, if the
+     * [return_url](https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-return_url)
+     * in the confirmation request is not set (i.e. set to `null`), then the following logic will
+     * be used:
+     * - Use [Custom Tabs](https://developer.chrome.com/docs/android/custom-tabs/overview/) if they
+     *   are supported on the device.
+     * - If Custom Tabs are not supported, use Chrome if it is available on the device.
+     * - Otherwise, use a WebView.
+     *
+     * If a custom `return_url` value is set, a WebView will always be used.
+     *
+     * |                   | Custom Tabs available? | Chrome available? | Fallback |
+     * |-------------------|------------------------|-------------------|----------|
+     * | No return_url     | Custom Tabs            | Chrome            | WebView  |
+     * | Custom return_url | WebView                | WebView           | WebView  |
+     *
      * @param activity the `Activity` that is launching the payment authentication flow
      * @param confirmPaymentIntentParams [ConfirmPaymentIntentParams] used to confirm the
      * [PaymentIntent]
@@ -144,18 +168,69 @@ class Stripe internal constructor(
     @JvmOverloads
     @UiThread
     fun confirmPayment(
+        activity: ComponentActivity,
+        confirmPaymentIntentParams: ConfirmPaymentIntentParams,
+        stripeAccountId: String? = this.stripeAccountId
+    ) {
+        activity.lifecycleScope.launch {
+            paymentController.startConfirmAndAuth(
+                AuthActivityStarter.Host.create(activity),
+                confirmPaymentIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
+            )
+        }
+    }
+
+    /**
+     * Confirm and, if necessary, authenticate a [PaymentIntent].
+     * Used for [automatic confirmation](https://stripe.com/docs/payments/payment-intents/quickstart#automatic-confirmation-flow) flow.
+     *
+     * For confirmation attempts that require 3DS1 authentication, if the
+     * [return_url](https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-return_url)
+     * in the confirmation request is not set (i.e. set to `null`), then the following logic will
+     * be used:
+     * - Use [Custom Tabs](https://developer.chrome.com/docs/android/custom-tabs/overview/) if they
+     *   are supported on the device.
+     * - If Custom Tabs are not supported, use Chrome if it is available on the device.
+     * - Otherwise, use a WebView.
+     *
+     * If a custom `return_url` value is set, a WebView will always be used.
+     *
+     * |                   | Custom Tabs available? | Chrome available? | Fallback |
+     * |-------------------|------------------------|-------------------|----------|
+     * | No return_url     | Custom Tabs            | Chrome            | WebView  |
+     * | Custom return_url | WebView                | WebView           | WebView  |
+     *
+     * @param activity the `Activity` that is launching the payment authentication flow
+     * @param confirmPaymentIntentParams [ConfirmPaymentIntentParams] used to confirm the
+     * [PaymentIntent]
+     * @param stripeAccountId Optional, the Connect account to associate with this request.
+     * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
+     */
+    @JvmOverloads
+    @UiThread
+    @Deprecated(
+        "ComponentActivity will be required in an upcoming major version.",
+        ReplaceWith("confirmPayment(ComponentActivity)")
+    )
+    fun confirmPayment(
         activity: Activity,
         confirmPaymentIntentParams: ConfirmPaymentIntentParams,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startConfirmAndAuth(
-            AuthActivityStarter.Host.create(activity),
-            confirmPaymentIntentParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
+        getLifecycleScope(activity).launch {
+            paymentController.startConfirmAndAuth(
+                AuthActivityStarter.Host.create(activity),
+                confirmPaymentIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
             )
-        )
+        }
     }
 
     /**
@@ -176,30 +251,73 @@ class Stripe internal constructor(
         stripeAccountId: String? = this.stripeAccountId,
         callback: ApiResultCallback<PaymentIntentResult>
     ) {
-        paymentController.startConfirm(
-            confirmPaymentIntentParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            object : ApiResultCallback<StripeIntent> {
-                override fun onSuccess(result: StripeIntent) {
-                    paymentController.authenticateAlipay(
-                        result,
-                        stripeAccountId,
-                        authenticator,
-                        callback
-                    )
-                }
+        executeAsync(callback) {
+            paymentController.confirmAndAuthenticateAlipay(
+                confirmPaymentIntentParams,
+                authenticator,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
+            )
+        }
+    }
 
-                override fun onError(e: Exception) = callback.onError(e)
-            }
-        )
+    /**
+     * Confirm a [PaymentIntent] for WeChat Pay. Extract params from [WeChatPayNextAction] to pass to WeChat Pay SDK.
+     * @see <a href="https://pay.weixin.qq.com/index.php/public/wechatpay">WeChat Pay Documentation</a>
+     *
+     * WeChat Pay API is still in beta, create a [Stripe] instance with [StripeApiBeta.WeChatPayV1] to enable this API.
+     *
+     * @param confirmPaymentIntentParams [ConfirmPaymentIntentParams] used to confirm the
+     * [PaymentIntent]
+     * @param stripeAccountId Optional, the Connect account to associate with this request.
+     * By default, will use the Connect account that was used to instantiate the [Stripe] object, if specified.
+     * @param callback a [ApiResultCallback] to receive the result or error
+     *
+     * Possible callback errors:
+     * [AuthenticationException] failure to properly authenticate yourself (check your key)
+     * [InvalidRequestException] your request has invalid parameters
+     * [APIConnectionException] failure to connect to Stripe's API
+     * [APIException] any other type of problem (for instance, a temporary issue with Stripe's servers)
+     * [InvalidRequestException] if the payment intent's next action data is not for WeChat Pay
+     */
+    @JvmOverloads
+    fun confirmWeChatPayPayment(
+        confirmPaymentIntentParams: ConfirmPaymentIntentParams,
+        stripeAccountId: String? = this.stripeAccountId,
+        callback: ApiResultCallback<WeChatPayNextAction>
+    ) {
+        executeAsync(callback) {
+            paymentController.confirmWeChatPay(
+                confirmPaymentIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
+            )
+        }
     }
 
     /**
      * Confirm and, if necessary, authenticate a [PaymentIntent].
      * Used for [automatic confirmation](https://stripe.com/docs/payments/payment-intents/quickstart#automatic-confirmation-flow) flow.
+     *
+     * For confirmation attempts that require 3DS1 authentication, if the
+     * [return_url](https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-return_url)
+     * in the confirmation request is not set (i.e. set to `null`), then the following logic will
+     * be used:
+     * - Use [Custom Tabs](https://developer.chrome.com/docs/android/custom-tabs/overview/) if they
+     *   are supported on the device.
+     * - If Custom Tabs are not supported, use Chrome if it is available on the device.
+     * - Otherwise, use a WebView.
+     *
+     * If a custom `return_url` value is set, a WebView will always be used.
+     *
+     * |                   | Custom Tabs available? | Chrome available? | Fallback |
+     * |-------------------|------------------------|-------------------|----------|
+     * | No return_url     | Custom Tabs            | Chrome            | WebView  |
+     * | Custom return_url | WebView                | WebView           | WebView  |
      *
      * @param fragment the `Fragment` that is launching the payment authentication flow
      * @param confirmPaymentIntentParams [ConfirmPaymentIntentParams] used to confirm the [PaymentIntent]
@@ -213,14 +331,16 @@ class Stripe internal constructor(
         confirmPaymentIntentParams: ConfirmPaymentIntentParams,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startConfirmAndAuth(
-            AuthActivityStarter.Host.create(fragment),
-            confirmPaymentIntentParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
+        fragment.lifecycleScope.launch {
+            paymentController.startConfirmAndAuth(
+                AuthActivityStarter.Host.create(fragment),
+                confirmPaymentIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
             )
-        )
+        }
     }
 
     /**
@@ -236,16 +356,21 @@ class Stripe internal constructor(
         ReplaceWith("handleNextActionForPayment(activity, clientSecret)")
     )
     @UiThread
-    fun authenticatePayment(activity: Activity, clientSecret: String) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(activity),
-            PaymentIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.PaymentIntent
-        )
+    fun authenticatePayment(
+        activity: Activity,
+        clientSecret: String
+    ) {
+        getLifecycleScope(activity).launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(activity),
+                PaymentIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.PaymentIntent
+            )
+        }
     }
 
     /**
@@ -263,19 +388,57 @@ class Stripe internal constructor(
     @JvmOverloads
     @UiThread
     fun handleNextActionForPayment(
+        activity: ComponentActivity,
+        clientSecret: String,
+        stripeAccountId: String? = this.stripeAccountId
+    ) {
+        activity.lifecycleScope.launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(activity),
+                PaymentIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.PaymentIntent
+            )
+        }
+    }
+
+    /**
+     * Handle the [next_action](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-next_action)
+     * for a previously confirmed [PaymentIntent].
+     *
+     * Used for [manual confirmation](https://stripe.com/docs/payments/payment-intents/quickstart#manual-confirmation-flow) flow.
+     *
+     * @param activity the `Activity` that is launching the payment authentication flow
+     * @param clientSecret the [client_secret](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-client_secret)
+     * property of a confirmed [PaymentIntent] object
+     * @param stripeAccountId Optional, the Connect account to associate with this request.
+     * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
+     */
+    @JvmOverloads
+    @UiThread
+    @Deprecated(
+        "ComponentActivity will be required in an upcoming major version.",
+        ReplaceWith("handleNextActionForPayment(ComponentActivity)")
+    )
+    fun handleNextActionForPayment(
         activity: Activity,
         clientSecret: String,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(activity),
-            PaymentIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.PaymentIntent
-        )
+        getLifecycleScope(activity).launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(activity),
+                PaymentIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.PaymentIntent
+            )
+        }
     }
 
     /**
@@ -291,16 +454,21 @@ class Stripe internal constructor(
         ReplaceWith("handleNextActionForPayment(fragment, clientSecret)")
     )
     @UiThread
-    fun authenticatePayment(fragment: Fragment, clientSecret: String) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(fragment),
-            PaymentIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.PaymentIntent
-        )
+    fun authenticatePayment(
+        fragment: Fragment,
+        clientSecret: String
+    ) {
+        fragment.lifecycleScope.launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(fragment),
+                PaymentIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.PaymentIntent
+            )
+        }
     }
 
     /**
@@ -322,15 +490,31 @@ class Stripe internal constructor(
         clientSecret: String,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(fragment),
-            PaymentIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.PaymentIntent
-        )
+        fragment.lifecycleScope.launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(fragment),
+                PaymentIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.PaymentIntent
+            )
+        }
+    }
+
+    /**
+     * Check if the requestCode and [Intent] is for [PaymentIntentResult].
+     * The [Intent] should be retrieved from the result from `Activity#onActivityResult(int, int, Intent)}}`
+     * by [Activity] started with [confirmPayment] or [handleNextActionForPayment].
+     *
+     * @return whether the requestCode and intent is for [PaymentIntentResult].
+     */
+    fun isPaymentResult(
+        requestCode: Int,
+        data: Intent?
+    ): Boolean {
+        return data != null && paymentController.shouldHandlePaymentResult(requestCode, data)
     }
 
     /**
@@ -344,8 +528,10 @@ class Stripe internal constructor(
         data: Intent?,
         callback: ApiResultCallback<PaymentIntentResult>
     ): Boolean {
-        return if (data != null && paymentController.shouldHandlePaymentResult(requestCode, data)) {
-            paymentController.handlePaymentResult(data, callback)
+        return if (data != null && isPaymentResult(requestCode, data)) {
+            executeAsync(callback) {
+                paymentController.getPaymentIntentResult(data)
+            }
             true
         } else {
             false
@@ -460,28 +646,107 @@ class Stripe internal constructor(
     /**
      * Confirm and, if necessary, authenticate a [SetupIntent].
      *
+     * For confirmation attempts that require 3DS1 authentication, if the
+     * [return_url](https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-return_url)
+     * in the confirmation request is not set (i.e. set to `null`), then the following logic will
+     * be used:
+     * - Use [Custom Tabs](https://developer.chrome.com/docs/android/custom-tabs/overview/) if they
+     *   are supported on the device.
+     * - If Custom Tabs are not supported, use Chrome if it is available on the device.
+     * - Otherwise, use a WebView.
+     *
+     * If a custom `return_url` value is set, a WebView will always be used.
+     *
+     * |                   | Custom Tabs available? | Chrome available? | Fallback |
+     * |-------------------|------------------------|-------------------|----------|
+     * | No return_url     | Custom Tabs            | Chrome            | WebView  |
+     * | Custom return_url | WebView                | WebView           | WebView  |
+     *
      * @param activity the `Activity` that is launching the payment authentication flow
      * @param stripeAccountId Optional, the Connect account to associate with this request.
      * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
      */
     @JvmOverloads
     fun confirmSetupIntent(
-        activity: Activity,
+        activity: ComponentActivity,
         confirmSetupIntentParams: ConfirmSetupIntentParams,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startConfirmAndAuth(
-            AuthActivityStarter.Host.create(activity),
-            confirmSetupIntentParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
+        activity.lifecycleScope.launch {
+            paymentController.startConfirmAndAuth(
+                AuthActivityStarter.Host.create(activity),
+                confirmSetupIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
             )
-        )
+        }
     }
 
     /**
      * Confirm and, if necessary, authenticate a [SetupIntent].
+     *
+     * For confirmation attempts that require 3DS1 authentication, if the
+     * [return_url](https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-return_url)
+     * in the confirmation request is not set (i.e. set to `null`), then the following logic will
+     * be used:
+     * - Use [Custom Tabs](https://developer.chrome.com/docs/android/custom-tabs/overview/) if they
+     *   are supported on the device.
+     * - If Custom Tabs are not supported, use Chrome if it is available on the device.
+     * - Otherwise, use a WebView.
+     *
+     * If a custom `return_url` value is set, a WebView will always be used.
+     *
+     * |                   | Custom Tabs available? | Chrome available? | Fallback |
+     * |-------------------|------------------------|-------------------|----------|
+     * | No return_url     | Custom Tabs            | Chrome            | WebView  |
+     * | Custom return_url | WebView                | WebView           | WebView  |
+     *
+     * @param activity the `Activity` that is launching the payment authentication flow
+     * @param stripeAccountId Optional, the Connect account to associate with this request.
+     * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
+     */
+    @JvmOverloads
+    @Deprecated(
+        "ComponentActivity will be required in an upcoming major version.",
+        ReplaceWith("confirmSetupIntent(ComponentActivity)")
+    )
+    fun confirmSetupIntent(
+        activity: Activity,
+        confirmSetupIntentParams: ConfirmSetupIntentParams,
+        stripeAccountId: String? = this.stripeAccountId
+    ) {
+        getLifecycleScope(activity).launch {
+            paymentController.startConfirmAndAuth(
+                AuthActivityStarter.Host.create(activity),
+                confirmSetupIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
+            )
+        }
+    }
+
+    /**
+     * Confirm and, if necessary, authenticate a [SetupIntent].
+     *
+     * For confirmation attempts that require 3DS1 authentication, if the
+     * [return_url](https://stripe.com/docs/api/payment_intents/confirm#confirm_payment_intent-return_url)
+     * in the confirmation request is not set (i.e. set to `null`), then the following logic will
+     * be used:
+     * - Use [Custom Tabs](https://developer.chrome.com/docs/android/custom-tabs/overview/) if they
+     *   are supported on the device.
+     * - If Custom Tabs are not supported, use Chrome if it is available on the device.
+     * - Otherwise, use a WebView.
+     *
+     * If a custom `return_url` value is set, a WebView will always be used.
+     *
+     * |                   | Custom Tabs available? | Chrome available? | Fallback |
+     * |-------------------|------------------------|-------------------|----------|
+     * | No return_url     | Custom Tabs            | Chrome            | WebView  |
+     * | Custom return_url | WebView                | WebView           | WebView  |
      *
      * @param fragment the `Fragment` that is launching the payment authentication flow
      * @param stripeAccountId Optional, the Connect account to associate with this request.
@@ -494,14 +759,16 @@ class Stripe internal constructor(
         confirmSetupIntentParams: ConfirmSetupIntentParams,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startConfirmAndAuth(
-            AuthActivityStarter.Host.create(fragment),
-            confirmSetupIntentParams,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
+        fragment.lifecycleScope.launch {
+            paymentController.startConfirmAndAuth(
+                AuthActivityStarter.Host.create(fragment),
+                confirmSetupIntentParams,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                )
             )
-        )
+        }
     }
 
     /**
@@ -516,16 +783,21 @@ class Stripe internal constructor(
         ReplaceWith("handleNextActionForSetupIntent(activity, clientSecret)")
     )
     @UiThread
-    fun authenticateSetup(activity: Activity, clientSecret: String) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(activity),
-            SetupIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.SetupIntent
-        )
+    fun authenticateSetup(
+        activity: Activity,
+        clientSecret: String
+    ) {
+        getLifecycleScope(activity).launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(activity),
+                SetupIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.SetupIntent
+            )
+        }
     }
 
     /**
@@ -541,19 +813,55 @@ class Stripe internal constructor(
     @UiThread
     @JvmOverloads
     fun handleNextActionForSetupIntent(
+        activity: ComponentActivity,
+        clientSecret: String,
+        stripeAccountId: String? = this.stripeAccountId
+    ) {
+        activity.lifecycleScope.launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(activity),
+                SetupIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.SetupIntent
+            )
+        }
+    }
+
+    /**
+     * Handle [next_action](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-next_action)
+     * for a previously confirmed [SetupIntent]. Used for manual confirmation flow.
+     *
+     * @param activity the `Activity` that is launching the payment authentication flow
+     * @param clientSecret the [client_secret](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-client_secret)
+     * property of a confirmed [SetupIntent] object
+     * @param stripeAccountId Optional, the Connect account to associate with this request.
+     * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
+     */
+    @UiThread
+    @JvmOverloads
+    @Deprecated(
+        "ComponentActivity will be required in an upcoming major version.",
+        ReplaceWith("handleNextActionForSetupIntent(ComponentActivity)")
+    )
+    fun handleNextActionForSetupIntent(
         activity: Activity,
         clientSecret: String,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(activity),
-            SetupIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.SetupIntent
-        )
+        getLifecycleScope(activity).launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(activity),
+                SetupIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.SetupIntent
+            )
+        }
     }
 
     /**
@@ -568,16 +876,21 @@ class Stripe internal constructor(
         ReplaceWith("handleNextActionForSetupIntent(fragment, clientSecret)")
     )
     @UiThread
-    fun authenticateSetup(fragment: Fragment, clientSecret: String) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(fragment),
-            SetupIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.SetupIntent
-        )
+    fun authenticateSetup(
+        fragment: Fragment,
+        clientSecret: String
+    ) {
+        fragment.lifecycleScope.launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(fragment),
+                SetupIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.SetupIntent
+            )
+        }
     }
 
     /**
@@ -597,15 +910,31 @@ class Stripe internal constructor(
         clientSecret: String,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startAuth(
-            AuthActivityStarter.Host.create(fragment),
-            SetupIntent.ClientSecret(clientSecret).value,
-            ApiRequest.Options(
-                apiKey = publishableKey,
-                stripeAccount = stripeAccountId
-            ),
-            PaymentController.StripeIntentType.SetupIntent
-        )
+        fragment.lifecycleScope.launch {
+            paymentController.startAuth(
+                AuthActivityStarter.Host.create(fragment),
+                SetupIntent.ClientSecret(clientSecret).value,
+                ApiRequest.Options(
+                    apiKey = publishableKey,
+                    stripeAccount = stripeAccountId
+                ),
+                PaymentController.StripeIntentType.SetupIntent
+            )
+        }
+    }
+
+    /**
+     * Check if the requestCode and [Intent] is for [SetupIntentResult].
+     * The [Intent] should be retrieved from the result from `Activity#onActivityResult(int, int, Intent)}}`
+     * by [Activity] started with [confirmSetupIntent].
+     *
+     * @return whether the requestCode and intent is for [SetupIntentResult].
+     */
+    fun isSetupResult(
+        requestCode: Int,
+        data: Intent?
+    ): Boolean {
+        return data != null && paymentController.shouldHandleSetupResult(requestCode, data)
     }
 
     /**
@@ -618,8 +947,10 @@ class Stripe internal constructor(
         data: Intent?,
         callback: ApiResultCallback<SetupIntentResult>
     ): Boolean {
-        return if (data != null && paymentController.shouldHandleSetupResult(requestCode, data)) {
-            paymentController.handleSetupResult(data, callback)
+        return if (data != null && isSetupResult(requestCode, data)) {
+            executeAsync(callback) {
+                paymentController.getSetupIntentResult(data)
+            }
             true
         } else {
             false
@@ -825,15 +1156,47 @@ class Stripe internal constructor(
      */
     @JvmOverloads
     fun authenticateSource(
+        activity: ComponentActivity,
+        source: Source,
+        stripeAccountId: String? = this.stripeAccountId
+    ) {
+        activity.lifecycleScope.launch {
+            paymentController.startAuthenticateSource(
+                AuthActivityStarter.Host.create(activity),
+                source,
+                ApiRequest.Options(publishableKey, stripeAccountId)
+            )
+        }
+    }
+
+    /**
+     * Authenticate a [Source] that requires user action via a redirect (i.e. [Source.flow] is
+     * [Source.Flow.Redirect].
+     *
+     * The result of this operation will be returned via `Activity#onActivityResult(int, int, Intent)}}`
+     *
+     * @param activity the `Activity` that is launching the [Source] authentication flow
+     * @param source the [Source] to confirm
+     * @param stripeAccountId Optional, the Connect account to associate with this request.
+     * By default, will use the Connect account that was used to instantiate the `Stripe` object, if specified.
+     */
+    @JvmOverloads
+    @Deprecated(
+        "ComponentActivity will be required in an upcoming major version.",
+        ReplaceWith("authenticateSource(ComponentActivity)")
+    )
+    fun authenticateSource(
         activity: Activity,
         source: Source,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startAuthenticateSource(
-            AuthActivityStarter.Host.create(activity),
-            source,
-            ApiRequest.Options(publishableKey, stripeAccountId)
-        )
+        getLifecycleScope(activity).launch {
+            paymentController.startAuthenticateSource(
+                AuthActivityStarter.Host.create(activity),
+                source,
+                ApiRequest.Options(publishableKey, stripeAccountId)
+            )
+        }
     }
 
     /**
@@ -853,15 +1216,21 @@ class Stripe internal constructor(
         source: Source,
         stripeAccountId: String? = this.stripeAccountId
     ) {
-        paymentController.startAuthenticateSource(
-            AuthActivityStarter.Host.create(fragment),
-            source,
-            ApiRequest.Options(publishableKey, stripeAccountId)
-        )
+        fragment.lifecycleScope.launchWhenCreated {
+            paymentController.startAuthenticateSource(
+                AuthActivityStarter.Host.create(fragment),
+                source,
+                ApiRequest.Options(publishableKey, stripeAccountId)
+            )
+        }
     }
 
     /**
-     * Should be called in `onActivityResult()` to determine if the result is for Source authentication
+     * Check if the requestCode and [Intent] is for [Source] authentication.
+     * The [Intent] should be retrieved from the result from `Activity#onActivityResult(int, int, Intent)}}`
+     * by [Activity] started with [authenticateSource].
+     *
+     * @return whether the requestCode and intent is for [Source] authentication
      */
     fun isAuthenticateSourceResult(
         requestCode: Int,
@@ -879,10 +1248,9 @@ class Stripe internal constructor(
         data: Intent,
         callback: ApiResultCallback<Source>
     ) {
-        paymentController.handleSourceResult(
-            data,
-            callback
-        )
+        executeAsync(callback) {
+            paymentController.getAuthenticateSourceResult(data)
+        }
     }
 
     /**
@@ -1664,11 +2032,22 @@ class Stripe internal constructor(
         )
     }
 
+    /**
+     * Get a [LifecycleCoroutineScope] if available. Otherwise, default to a [CoroutineScope]
+     * using [Dispatchers.IO].
+     */
+    private fun getLifecycleScope(
+        activity: Activity
+    ): CoroutineScope = when (activity) {
+        is ComponentActivity -> activity.lifecycleScope
+        else -> CoroutineScope(workContext)
+    }
+
     companion object {
         @JvmField
         val API_VERSION: String = ApiVersion.get().code
 
-        internal const val VERSION_NAME = "16.2.0"
+        internal const val VERSION_NAME = "16.7.1"
         const val VERSION: String = "AndroidBindings/$VERSION_NAME"
 
         /**

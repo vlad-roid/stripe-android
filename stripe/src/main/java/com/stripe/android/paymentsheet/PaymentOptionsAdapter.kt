@@ -3,215 +3,198 @@ package com.stripe.android.paymentsheet
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.VisibleForTesting
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import com.stripe.android.R
 import com.stripe.android.databinding.LayoutPaymentsheetAddCardItemBinding
 import com.stripe.android.databinding.LayoutPaymentsheetGooglePayItemBinding
 import com.stripe.android.databinding.LayoutPaymentsheetPaymentMethodItemBinding
 import com.stripe.android.model.CardBrand
 import com.stripe.android.model.PaymentMethod
+import com.stripe.android.paymentsheet.model.FragmentConfig
 import com.stripe.android.paymentsheet.model.PaymentSelection
+import com.stripe.android.paymentsheet.model.SavedSelection
+import kotlin.math.roundToInt
 import kotlin.properties.Delegates
 
 internal class PaymentOptionsAdapter(
-    private var paymentSelection: PaymentSelection?,
-    val paymentOptionSelectedListener: (PaymentSelection, Boolean) -> Unit,
+    private val canClickSelectedItem: Boolean,
+    val paymentOptionSelectedListener: (paymentSelection: PaymentSelection, isClick: Boolean) -> Unit,
     val addCardClickListener: View.OnClickListener
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-    var shouldShowGooglePay: Boolean by Delegates.observable(false) { _, _, _ ->
-        notifyDataSetChanged()
-    }
+) : RecyclerView.Adapter<PaymentOptionsAdapter.PaymentOptionViewHolder>() {
+    private var items: List<Item> = emptyList()
+    private var selectedItemPosition: Int = NO_POSITION
 
-    var paymentMethods: List<PaymentMethod> = emptyList()
-        set(value) {
-            val sortedPaymentMethods = sortPaymentMethods(value)
+    internal val selectedItem: Item? get() = items.getOrNull(selectedItemPosition)
 
-            if (sortedPaymentMethods != field) {
-                field = sortedPaymentMethods
-                notifyDataSetChanged()
-                updatePaymentSelection(defaultPaymentMethodId)
-            }
-        }
-
-    var defaultPaymentMethodId: String? by Delegates.observable(
-        null
-    ) { _, oldDefaultPaymentMethodId, newDefaultPaymentMethodId ->
-        updatePaymentSelection(newDefaultPaymentMethodId)
-
-        paymentMethods = sortPaymentMethods(paymentMethods)
-        if (newDefaultPaymentMethodId != oldDefaultPaymentMethodId) {
+    internal var isEnabled: Boolean by Delegates.observable(true) { _, oldValue, newValue ->
+        if (oldValue != newValue) {
             notifyDataSetChanged()
         }
     }
-
-    private val selectedPaymentMethod: PaymentMethod? get() = (paymentSelection as? PaymentSelection.Saved)?.paymentMethod
-
-    private val googlePayCount: Int get() = 1.takeIf { shouldShowGooglePay } ?: 0
 
     init {
         setHasStableIds(true)
     }
 
-    private fun onPaymentMethodSelected(
-        clickedPaymentMethod: PaymentMethod,
+    fun update(
+        config: FragmentConfig,
+        paymentSelection: PaymentSelection? = null
+    ) {
+        val items = listOfNotNull(
+            Item.AddCard,
+            Item.GooglePay.takeIf { config.isGooglePayReady }
+        ) + config.sortedPaymentMethods.map {
+            Item.ExistingPaymentMethod(it)
+        }
+
+        this.items = items
+
+        onItemSelected(
+            position = paymentSelection?.let { findSelectedPosition(it) }.takeIf { it != -1 }
+                ?: findInitialSelectedPosition(config.savedSelection),
+            isClick = false
+        )
+
+        notifyDataSetChanged()
+    }
+
+    /**
+     * The initial selection position follows this prioritization:
+     * 1. The index of [Item.ExistingPaymentMethod] if it matches the [SavedSelection]
+     * 2. The index of [Item.GooglePay] if it exists
+     * 3. The index of the first [Item.ExistingPaymentMethod]
+     * 4. None (-1)
+     */
+    private fun findInitialSelectedPosition(
+        savedSelection: SavedSelection
+    ): Int {
+        return listOfNotNull(
+            // saved selection
+            items.indexOfFirst { item ->
+                when (savedSelection) {
+                    SavedSelection.GooglePay -> item is Item.GooglePay
+                    is SavedSelection.PaymentMethod -> {
+                        when (item) {
+                            is Item.ExistingPaymentMethod -> {
+                                savedSelection.id == item.paymentMethod.id
+                            }
+                            else -> false
+                        }
+                    }
+                    SavedSelection.None -> false
+                }
+            }.takeIf { it != -1 },
+
+            // Google Pay
+            items.indexOfFirst { it is Item.GooglePay }.takeIf { it != -1 },
+
+            // the first payment method
+            items.indexOfFirst { it is Item.ExistingPaymentMethod }.takeIf { it != -1 }
+        ).firstOrNull() ?: NO_POSITION
+    }
+
+    /**
+     * Find the index of [paymentSelection] in the current items. Return -1 if not found.
+     */
+    private fun findSelectedPosition(paymentSelection: PaymentSelection): Int {
+        return items.indexOfFirst { item ->
+            when (paymentSelection) {
+                PaymentSelection.GooglePay -> item is Item.GooglePay
+                is PaymentSelection.Saved -> {
+                    when (item) {
+                        is Item.ExistingPaymentMethod -> {
+                            paymentSelection.paymentMethod.id == item.paymentMethod.id
+                        }
+                        else -> false
+                    }
+                }
+                else -> false
+            }
+        }
+    }
+
+    @VisibleForTesting
+    internal fun onItemSelected(
+        position: Int,
         isClick: Boolean
     ) {
-        if (selectedPaymentMethod?.id != clickedPaymentMethod.id) {
-            // selected a new Payment Method
-            selectedPaymentMethod?.let {
-                notifyItemChanged(getPosition(it))
-            }
-            notifyItemChanged(getPosition(clickedPaymentMethod))
-            val paymentSelection = PaymentSelection.Saved(clickedPaymentMethod).also {
-                this.paymentSelection = it
-            }
+        if (position != NO_POSITION &&
+            (canClickSelectedItem || position != selectedItemPosition)
+        ) {
+            val previousSelectedIndex = selectedItemPosition
+            selectedItemPosition = position
 
-            // unselect Google Pay if Google Pay is enabled
-            if (shouldShowGooglePay) {
-                notifyItemChanged(GOOGLE_PAY_POSITION)
-            }
+            notifyItemChanged(previousSelectedIndex)
+            notifyItemChanged(position)
 
-            paymentOptionSelectedListener(paymentSelection, isClick)
-        }
-    }
+            val newSelectedItem = items[position]
 
-    private fun onGooglePaySelected() {
-        if (paymentSelection != PaymentSelection.GooglePay) {
-            // unselect previous item
-            val previouslySelectedPaymentMethod = selectedPaymentMethod
-            paymentSelection = PaymentSelection.GooglePay
-            previouslySelectedPaymentMethod?.let {
-                notifyItemChanged(getPosition(it))
-            }
-
-            // select Google Pay item
-            notifyItemChanged(GOOGLE_PAY_POSITION)
-            paymentOptionSelectedListener(PaymentSelection.GooglePay, true)
-        }
-    }
-
-    override fun getItemId(position: Int): Long {
-        return if (shouldShowGooglePay) {
-            when (position) {
-                ADD_NEW_POSITION -> ADD_NEW_ID
-                GOOGLE_PAY_POSITION -> GOOGLE_PAY_ID
-                else -> getPaymentMethodAtPosition(position).hashCode().toLong()
-            }
-        } else {
-            when (position) {
-                ADD_NEW_POSITION -> ADD_NEW_ID
-                else -> getPaymentMethodAtPosition(position).hashCode().toLong()
+            when (newSelectedItem) {
+                Item.AddCard -> null
+                Item.GooglePay -> PaymentSelection.GooglePay
+                is Item.ExistingPaymentMethod -> PaymentSelection.Saved(newSelectedItem.paymentMethod)
+            }?.let { paymentSelection ->
+                paymentOptionSelectedListener(
+                    paymentSelection,
+                    isClick
+                )
             }
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+    override fun getItemId(position: Int): Long = items[position].hashCode().toLong()
+    override fun getItemCount(): Int = items.size
+    override fun getItemViewType(position: Int): Int = items[position].viewType.ordinal
+
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): PaymentOptionViewHolder {
         return when (ViewType.values()[viewType]) {
-            ViewType.GooglePay -> GooglePayViewHolder(parent)
-            ViewType.Card -> CardViewHolder(parent)
             ViewType.AddCard -> AddCardViewHolder(parent).apply {
                 itemView.setOnClickListener(addCardClickListener)
             }
-        }
-    }
-
-    override fun getItemCount(): Int {
-        return listOfNotNull(
-            1, // Add new item
-            googlePayCount, // Google Pay item
-            paymentMethods.size
-        ).sum()
-    }
-
-    override fun getItemViewType(position: Int): Int {
-        val type = if (shouldShowGooglePay) {
-            when (position) {
-                ADD_NEW_POSITION -> ViewType.AddCard
-                GOOGLE_PAY_POSITION -> ViewType.GooglePay
-                else -> ViewType.Card
+            ViewType.GooglePay -> GooglePayViewHolder(parent).apply {
+                itemView.setOnClickListener {
+                    onItemSelected(bindingAdapterPosition, isClick = true)
+                }
             }
-        } else {
-            when (position) {
-                ADD_NEW_POSITION -> ViewType.AddCard
-                else -> ViewType.Card
+            ViewType.Card -> CardViewHolder(parent).apply {
+                itemView.setOnClickListener {
+                    onItemSelected(bindingAdapterPosition, isClick = true)
+                }
             }
         }
-        return type.ordinal
     }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+    override fun onBindViewHolder(
+        holder: PaymentOptionViewHolder,
+        position: Int
+    ) {
+        val item = items[position]
         if (holder is CardViewHolder) {
-            val paymentMethod = getPaymentMethodAtPosition(position)
-            holder.setPaymentMethod(paymentMethod)
-            holder.setSelected(paymentMethod.id == selectedPaymentMethod?.id)
-            holder.itemView.setOnClickListener {
-                onPaymentMethodSelected(
-                    getPaymentMethodAtPosition(holder.adapterPosition),
-                    true
-                )
+            holder.setSelected(position == selectedItemPosition)
+
+            when (item) {
+                is Item.ExistingPaymentMethod -> {
+                    holder.bindPaymentMethod(item.paymentMethod)
+                }
+                else -> {
+                    // noop
+                }
             }
         } else if (holder is GooglePayViewHolder) {
-            holder.setSelected(paymentSelection == PaymentSelection.GooglePay)
-            holder.itemView.setOnClickListener {
-                onGooglePaySelected()
-            }
+            holder.setSelected(position == selectedItemPosition)
         }
-    }
-
-    /**
-     * Given an adapter position, translate to a `paymentMethods` element
-     */
-    @JvmSynthetic
-    internal fun getPaymentMethodAtPosition(position: Int): PaymentMethod {
-        return paymentMethods[getPaymentMethodIndex(position)]
-    }
-
-    /**
-     * Given an adapter position, translate to a `paymentMethods` index
-     */
-    private fun getPaymentMethodIndex(position: Int): Int {
-        return position - googlePayCount - 1
-    }
-
-    private fun getPosition(paymentMethod: PaymentMethod): Int {
-        return paymentMethods.indexOf(paymentMethod).let {
-            it + googlePayCount + 1
-        }
-    }
-
-    private fun updatePaymentSelection(
-        paymentMethodId: String?
-    ) {
-        paymentSelection = paymentMethods.firstOrNull { it.id == paymentMethodId }?.let {
-            PaymentSelection.Saved(it)
-        }
-        paymentSelection?.let {
-            paymentOptionSelectedListener(it, false)
-        }
-    }
-
-    private fun sortPaymentMethods(
-        paymentMethods: List<PaymentMethod>
-    ): List<PaymentMethod> {
-        val primaryPaymentMethodIndex = paymentMethods.indexOfFirst {
-            it.id == defaultPaymentMethodId
-        }
-        return if (primaryPaymentMethodIndex != -1) {
-            val mutablePaymentMethods = paymentMethods.toMutableList()
-            mutablePaymentMethods.removeAt(primaryPaymentMethodIndex)
-                .also { primaryPaymentMethod ->
-                    mutablePaymentMethods.add(0, primaryPaymentMethod)
-                }
-            mutablePaymentMethods
-        } else {
-            paymentMethods
-        }
+        holder.setEnabled(isEnabled)
     }
 
     private class CardViewHolder(
         private val binding: LayoutPaymentsheetPaymentMethodItemBinding
-    ) : RecyclerView.ViewHolder(binding.root) {
+    ) : PaymentOptionViewHolder(binding.root) {
         constructor(parent: ViewGroup) : this(
             LayoutPaymentsheetPaymentMethodItemBinding.inflate(
                 LayoutInflater.from(parent.context),
@@ -221,52 +204,78 @@ internal class PaymentOptionsAdapter(
         )
 
         init {
-            binding.card.setOnClickListener {
-                // TODO(mshafrir-stripe): Card view was ignoring clicks without this - investigate?
-                itemView.performClick()
-            }
-
             // ensure that the check icon is above the card
             binding.checkIcon.elevation = binding.card.elevation + 1
         }
 
-        fun setPaymentMethod(method: PaymentMethod) {
+        fun bindPaymentMethod(method: PaymentMethod) {
             // TODO: Communicate error if card data not present
             method.card?.let { card ->
-                binding.brandIcon.setImageResource(
-                    when (card.brand) {
-                        CardBrand.Visa -> R.drawable.stripe_ic_paymentsheet_card_visa
-                        CardBrand.AmericanExpress -> R.drawable.stripe_ic_paymentsheet_card_amex
-                        CardBrand.Discover -> R.drawable.stripe_ic_paymentsheet_card_discover
-                        CardBrand.JCB -> R.drawable.stripe_ic_paymentsheet_card_jcb
-                        CardBrand.DinersClub -> R.drawable.stripe_ic_paymentsheet_card_dinersclub
-                        CardBrand.MasterCard -> R.drawable.stripe_ic_paymentsheet_card_mastercard
-                        CardBrand.UnionPay -> R.drawable.stripe_ic_paymentsheet_card_unionpay
-                        CardBrand.Unknown -> R.drawable.stripe_ic_paymentsheet_card_unknown
-                    }
+                bind(
+                    brand = card.brand,
+                    last4 = card.last4
                 )
-                binding.label.text = itemView.context
-                    .getString(R.string.paymentsheet_payment_method_item_card_number, card.last4)
             }
         }
 
+        private fun bind(
+            brand: CardBrand,
+            last4: String?
+        ) {
+            binding.brandIcon.setImageResource(
+                when (brand) {
+                    CardBrand.Visa -> R.drawable.stripe_ic_paymentsheet_card_visa
+                    CardBrand.AmericanExpress -> R.drawable.stripe_ic_paymentsheet_card_amex
+                    CardBrand.Discover -> R.drawable.stripe_ic_paymentsheet_card_discover
+                    CardBrand.JCB -> R.drawable.stripe_ic_paymentsheet_card_jcb
+                    CardBrand.DinersClub -> R.drawable.stripe_ic_paymentsheet_card_dinersclub
+                    CardBrand.MasterCard -> R.drawable.stripe_ic_paymentsheet_card_mastercard
+                    CardBrand.UnionPay -> R.drawable.stripe_ic_paymentsheet_card_unionpay
+                    CardBrand.Unknown -> R.drawable.stripe_ic_paymentsheet_card_unknown
+                }
+            )
+            binding.label.text = itemView.context
+                .getString(R.string.paymentsheet_payment_method_item_card_number, last4)
+        }
+
         fun setSelected(selected: Boolean) {
-            binding.card.isChecked = selected
+            binding.root.isSelected = selected
             binding.checkIcon.isVisible = selected
+            binding.card.strokeWidth = cardStrokeWidth(selected)
+        }
+
+        override fun setEnabled(enabled: Boolean) {
+            binding.card.isEnabled = enabled
+            binding.root.isEnabled = enabled
+            binding.label.isEnabled = enabled
+            binding.brandIcon.alpha = if (enabled) 1F else 0.6F
         }
     }
 
-    private class AddCardViewHolder(parent: ViewGroup) : RecyclerView.ViewHolder(
-        LayoutPaymentsheetAddCardItemBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        ).root
-    )
+    private class AddCardViewHolder(
+        private val binding: LayoutPaymentsheetAddCardItemBinding
+    ) : PaymentOptionViewHolder(
+        binding.root
+    ) {
+        constructor(parent: ViewGroup) : this(
+            LayoutPaymentsheetAddCardItemBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+        )
+
+        override fun setEnabled(enabled: Boolean) {
+            binding.card.isEnabled = enabled
+            binding.root.isEnabled = enabled
+            binding.label.isEnabled = enabled
+            binding.plusIcon.alpha = if (enabled) 1F else 0.6F
+        }
+    }
 
     private class GooglePayViewHolder(
         private val binding: LayoutPaymentsheetGooglePayItemBinding
-    ) : RecyclerView.ViewHolder(
+    ) : PaymentOptionViewHolder(
         binding.root
     ) {
         constructor(parent: ViewGroup) : this(
@@ -276,18 +285,39 @@ internal class PaymentOptionsAdapter(
         )
 
         init {
-            binding.card.setOnClickListener {
-                // TODO(mshafrir-stripe): Card view was ignoring clicks without this - investigate?
-                itemView.performClick()
-            }
-
             // ensure that the check icon is above the card
             binding.checkIcon.elevation = binding.card.elevation + 1
         }
 
         fun setSelected(selected: Boolean) {
-            binding.card.isChecked = selected
+            binding.root.isSelected = selected
             binding.checkIcon.isVisible = selected
+            binding.card.strokeWidth = cardStrokeWidth(selected)
+        }
+
+        override fun setEnabled(enabled: Boolean) {
+            binding.card.isEnabled = enabled
+            binding.root.isEnabled = enabled
+            binding.label.isEnabled = enabled
+            binding.googlePayMark.alpha = if (enabled) 1F else 0.6F
+        }
+    }
+
+    internal abstract class PaymentOptionViewHolder(parent: ViewGroup) :
+        RecyclerView.ViewHolder(parent) {
+
+        abstract fun setEnabled(enabled: Boolean)
+
+        fun cardStrokeWidth(selected: Boolean): Int {
+            return if (selected) {
+                itemView.resources
+                    .getDimension(R.dimen.stripe_paymentsheet_card_stroke_width_selected)
+                    .roundToInt()
+            } else {
+                itemView.resources
+                    .getDimension(R.dimen.stripe_paymentsheet_card_stroke_width)
+                    .roundToInt()
+            }
         }
     }
 
@@ -297,11 +327,21 @@ internal class PaymentOptionsAdapter(
         GooglePay
     }
 
-    internal companion object {
-        internal const val ADD_NEW_ID = 1234L
-        internal const val GOOGLE_PAY_ID = 1235L
+    internal sealed class Item {
+        abstract val viewType: ViewType
 
-        private const val ADD_NEW_POSITION = 0
-        private const val GOOGLE_PAY_POSITION = 1
+        object AddCard : Item() {
+            override val viewType: ViewType = ViewType.AddCard
+        }
+
+        object GooglePay : Item() {
+            override val viewType: ViewType = ViewType.GooglePay
+        }
+
+        data class ExistingPaymentMethod(
+            val paymentMethod: PaymentMethod
+        ) : Item() {
+            override val viewType: ViewType = ViewType.Card
+        }
     }
 }

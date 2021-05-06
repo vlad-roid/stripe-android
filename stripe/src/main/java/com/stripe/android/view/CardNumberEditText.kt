@@ -8,7 +8,6 @@ import android.text.InputType
 import android.util.AttributeSet
 import android.view.View
 import androidx.annotation.VisibleForTesting
-import com.stripe.android.AnalyticsEvent
 import com.stripe.android.PaymentConfiguration
 import com.stripe.android.R
 import com.stripe.android.cards.CardAccountRangeRepository
@@ -18,9 +17,9 @@ import com.stripe.android.cards.DefaultStaticCardAccountRanges
 import com.stripe.android.cards.StaticCardAccountRanges
 import com.stripe.android.model.AccountRange
 import com.stripe.android.model.CardBrand
-import com.stripe.android.networking.AnalyticsDataFactory
-import com.stripe.android.networking.AnalyticsRequest
+import com.stripe.android.networking.AnalyticsEvent
 import com.stripe.android.networking.AnalyticsRequestExecutor
+import com.stripe.android.networking.AnalyticsRequestFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,8 +42,7 @@ open class CardNumberEditText internal constructor(
     private val cardAccountRangeRepository: CardAccountRangeRepository,
     private val staticCardAccountRanges: StaticCardAccountRanges = DefaultStaticCardAccountRanges(),
     private val analyticsRequestExecutor: AnalyticsRequestExecutor,
-    private val analyticsRequestFactory: AnalyticsRequest.Factory,
-    private val analyticsDataFactory: AnalyticsDataFactory
+    private val analyticsRequestFactory: AnalyticsRequestFactory
 ) : StripeEditText(context, attrs, defStyleAttr) {
 
     @JvmOverloads
@@ -74,8 +72,7 @@ open class CardNumberEditText internal constructor(
         DefaultCardAccountRangeRepositoryFactory(context).create(),
         DefaultStaticCardAccountRanges(),
         AnalyticsRequestExecutor.Default(),
-        AnalyticsRequest.Factory(),
-        AnalyticsDataFactory(
+        AnalyticsRequestFactory(
             context,
             publishableKeySupplier = publishableKeySupplier
         )
@@ -166,11 +163,19 @@ open class CardNumberEditText internal constructor(
         setErrorMessage(resources.getString(R.string.invalid_card_number))
         addTextChangedListener(CardNumberTextWatcher())
 
+        internalFocusChangeListeners.add { _, hasFocus ->
+            if (!hasFocus && unvalidatedCardNumber.isPartialEntry(panLength)) {
+                shouldShowError = true
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             setAutofillHints(View.AUTOFILL_HINT_CREDIT_CARD_NUMBER)
         }
 
         updateLengthFilter()
+
+        this.layoutDirection = LAYOUT_DIRECTION_LTR
     }
 
     override fun onAttachedToWindow() {
@@ -291,14 +296,11 @@ open class CardNumberEditText internal constructor(
     @JvmSynthetic
     internal fun onCardMetadataLoadedTooSlow() {
         analyticsRequestExecutor.executeAsync(
-            analyticsRequestFactory.create(
-                analyticsDataFactory.createParams(AnalyticsEvent.CardMetadataLoadedTooSlow)
-            )
+            analyticsRequestFactory.createRequest(AnalyticsEvent.CardMetadataLoadedTooSlow)
         )
     }
 
     private inner class CardNumberTextWatcher : StripeTextWatcher() {
-        private var ignoreChanges = false
         private var latestChangeStart: Int = 0
         private var latestInsertionSize: Int = 0
 
@@ -310,20 +312,14 @@ open class CardNumberEditText internal constructor(
         private var isPastedPan = false
 
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-            if (!ignoreChanges) {
-                isPastedPan = false
-                beforeCardNumber = unvalidatedCardNumber
+            isPastedPan = false
+            beforeCardNumber = unvalidatedCardNumber
 
-                latestChangeStart = start
-                latestInsertionSize = after
-            }
+            latestChangeStart = start
+            latestInsertionSize = after
         }
 
         override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-            if (ignoreChanges) {
-                return
-            }
-
             val cardNumber = CardNumber.Unvalidated(s?.toString().orEmpty())
             val staticAccountRange = staticCardAccountRanges.filter(cardNumber)
                 .let { accountRanges ->
@@ -364,14 +360,8 @@ open class CardNumberEditText internal constructor(
         }
 
         override fun afterTextChanged(s: Editable?) {
-            if (ignoreChanges) {
-                return
-            }
-
-            ignoreChanges = true
-
             if (shouldUpdateAfterChange) {
-                setText(formattedNumber)
+                setTextSilent(formattedNumber)
                 newCursorPosition?.let {
                     setSelection(it.coerceIn(0, fieldText.length))
                 }
@@ -379,8 +369,6 @@ open class CardNumberEditText internal constructor(
 
             formattedNumber = null
             newCursorPosition = null
-
-            ignoreChanges = false
 
             if (unvalidatedCardNumber.length == panLength) {
                 val wasCardNumberValid = isCardNumberValid
@@ -395,9 +383,16 @@ open class CardNumberEditText internal constructor(
                 if (isComplete(wasCardNumberValid)) {
                     completionCallback()
                 }
+            } else if (unvalidatedCardNumber.isPartialEntry(panLength) &&
+                !unvalidatedCardNumber.isPossibleCardBrand()
+            ) {
+                // Partial card number entered and brand is not yet determine, but possible.
+                isCardNumberValid = isValid
+                shouldShowError = true
             } else {
                 isCardNumberValid = isValid
-                // Don't show errors if we aren't full-length.
+                // Don't show errors if we aren't full-length and the brand is known.
+                // TODO (michelleb-stripe) Should set error message to incomplete, then in focus change if it isn't complete it will update it.
                 shouldShowError = false
             }
         }

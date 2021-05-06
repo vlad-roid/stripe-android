@@ -63,8 +63,7 @@ class ConfirmPaymentIntentParamsTest {
         val params = ConfirmPaymentIntentParams
             .createWithPaymentMethodCreateParams(
                 PaymentMethodCreateParamsFixtures.DEFAULT_CARD,
-                CLIENT_SECRET,
-                RETURN_URL
+                CLIENT_SECRET
             )
             .toParamMap()
 
@@ -72,7 +71,6 @@ class ConfirmPaymentIntentParamsTest {
             .isEqualTo(
                 mapOf(
                     "client_secret" to CLIENT_SECRET,
-                    "return_url" to RETURN_URL,
                     "use_stripe_sdk" to false,
                     "payment_method_data" to PaymentMethodCreateParamsFixtures.DEFAULT_CARD.toParamMap()
                 )
@@ -82,14 +80,13 @@ class ConfirmPaymentIntentParamsTest {
     @Test
     fun toParamMap_withPaymentMethodId_shouldCreateExpectedMap() {
         val params = ConfirmPaymentIntentParams
-            .createWithPaymentMethodId(PM_ID, CLIENT_SECRET, RETURN_URL)
+            .createWithPaymentMethodId(PM_ID, CLIENT_SECRET)
             .toParamMap()
 
         assertThat(params)
             .isEqualTo(
                 mapOf(
                     "client_secret" to CLIENT_SECRET,
-                    "return_url" to RETURN_URL,
                     "use_stripe_sdk" to false,
                     "payment_method" to PM_ID
                 )
@@ -103,7 +100,6 @@ class ConfirmPaymentIntentParamsTest {
             .createWithPaymentMethodCreateParams(
                 paymentMethodCreateParams,
                 CLIENT_SECRET,
-                RETURN_URL,
                 savePaymentMethod = true
             )
             .toParamMap()
@@ -112,7 +108,6 @@ class ConfirmPaymentIntentParamsTest {
             .isEqualTo(
                 mapOf(
                     "client_secret" to CLIENT_SECRET,
-                    "return_url" to RETURN_URL,
                     "use_stripe_sdk" to false,
                     "payment_method_data" to PaymentMethodCreateParamsFixtures.DEFAULT_CARD.toParamMap(),
                     "save_payment_method" to true
@@ -123,14 +118,13 @@ class ConfirmPaymentIntentParamsTest {
     @Test
     fun toParamMap_withPaymentMethodIdAndSavePaymentMethod_shouldCreateExpectedMap() {
         val params = ConfirmPaymentIntentParams
-            .createWithPaymentMethodId(PM_ID, CLIENT_SECRET, RETURN_URL, true)
+            .createWithPaymentMethodId(PM_ID, CLIENT_SECRET, true)
             .toParamMap()
 
         assertThat(params)
             .isEqualTo(
                 mapOf(
                     "client_secret" to CLIENT_SECRET,
-                    "return_url" to RETURN_URL,
                     "use_stripe_sdk" to false,
                     "payment_method" to PM_ID,
                     "save_payment_method" to true
@@ -144,10 +138,7 @@ class ConfirmPaymentIntentParamsTest {
             .createWithPaymentMethodId(
                 "pm_123",
                 CLIENT_SECRET,
-                extraParams = mapOf(
-                    "animal" to "dog",
-                    "color" to "brown"
-                )
+                setupFutureUsage = ConfirmPaymentIntentParams.SetupFutureUsage.OnSession
             )
             .toParamMap()
 
@@ -157,8 +148,7 @@ class ConfirmPaymentIntentParamsTest {
                     "client_secret" to CLIENT_SECRET,
                     "use_stripe_sdk" to false,
                     "payment_method" to "pm_123",
-                    "animal" to "dog",
-                    "color" to "brown"
+                    "setup_future_usage" to "on_session"
                 )
             )
     }
@@ -214,6 +204,39 @@ class ConfirmPaymentIntentParamsTest {
                     "type" to "sepa_debit",
                     "sepa_debit" to mapOf(
                         "iban" to "my_iban"
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun toParamMap_withIdealPaymentMethodParams_shouldUseDefaultMandateDataIfNotSpecified() {
+        assertThat(
+            ConfirmPaymentIntentParams.createWithPaymentMethodCreateParams(
+                clientSecret = CLIENT_SECRET,
+                paymentMethodCreateParams = PaymentMethodCreateParams.create(
+                    PaymentMethodCreateParams.Ideal(bank = "my_bank")
+                ),
+                savePaymentMethod = false
+            ).toParamMap()
+        ).isEqualTo(
+            mapOf(
+                "client_secret" to CLIENT_SECRET,
+                "save_payment_method" to false,
+                "use_stripe_sdk" to false,
+                "mandate_data" to mapOf(
+                    "customer_acceptance" to mapOf(
+                        "type" to "online",
+                        "online" to mapOf(
+                            "infer_from_client" to true
+                        )
+                    )
+                ),
+                "payment_method_data" to mapOf(
+                    "type" to "ideal",
+                    "ideal" to mapOf(
+                        "bank" to "my_bank"
                     )
                 )
             )
@@ -305,7 +328,7 @@ class ConfirmPaymentIntentParamsTest {
     }
 
     @Test
-    fun toParamMap_withPaymentMethodOptions_shouldCreateExpectedMap() {
+    fun toParamMap_withCardPaymentMethodOptions_shouldCreateExpectedMap() {
         assertThat(
             ConfirmPaymentIntentParams(
                 paymentMethodId = "pm_123",
@@ -318,6 +341,57 @@ class ConfirmPaymentIntentParamsTest {
             mapOf(
                 "payment_method" to "pm_123",
                 "payment_method_options" to mapOf("card" to mapOf("cvc" to "123")),
+                "client_secret" to CLIENT_SECRET,
+                "use_stripe_sdk" to false
+            )
+        )
+    }
+
+    @Test
+    fun toParamMap_withBlikPaymentMethodOptions_shouldCreateExpectedMap() {
+        val blikCode = "123456"
+        assertThat(
+            ConfirmPaymentIntentParams(
+                paymentMethodId = "pm_123",
+                paymentMethodOptions = PaymentMethodOptionsParams.Blik(
+                    code = blikCode
+                ),
+                clientSecret = CLIENT_SECRET
+            ).toParamMap()
+        ).isEqualTo(
+            mapOf(
+                "payment_method" to "pm_123",
+                "payment_method_options" to mapOf(
+                    PaymentMethod.Type.Blik.code to mapOf(
+                        PaymentMethodOptionsParams.Blik.PARAM_CODE to blikCode
+                    )
+                ),
+                "client_secret" to CLIENT_SECRET,
+                "use_stripe_sdk" to false
+            )
+        )
+    }
+
+    @Test
+    fun toParamMap_withWeChatPayPaymentMethodOptions_shouldCreateExpectedMap() {
+        val appId = "appId123456"
+        assertThat(
+            ConfirmPaymentIntentParams(
+                paymentMethodId = "pm_123",
+                paymentMethodOptions = PaymentMethodOptionsParams.WeChatPay(
+                    appId = appId
+                ),
+                clientSecret = CLIENT_SECRET
+            ).toParamMap()
+        ).isEqualTo(
+            mapOf(
+                "payment_method" to "pm_123",
+                "payment_method_options" to mapOf(
+                    PaymentMethod.Type.WeChatPay.code to mapOf(
+                        PaymentMethodOptionsParams.WeChatPay.PARAM_CLIENT to "android",
+                        PaymentMethodOptionsParams.WeChatPay.PARAM_APP_ID to appId,
+                    )
+                ),
                 "client_secret" to CLIENT_SECRET,
                 "use_stripe_sdk" to false
             )

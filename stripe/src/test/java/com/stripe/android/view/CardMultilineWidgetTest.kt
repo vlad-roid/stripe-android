@@ -25,6 +25,7 @@ import com.stripe.android.cards.DefaultCardAccountRangeStore
 import com.stripe.android.model.Address
 import com.stripe.android.model.BinFixtures
 import com.stripe.android.model.Card
+import com.stripe.android.model.CardBrand
 import com.stripe.android.model.CardParams
 import com.stripe.android.model.PaymentMethod
 import com.stripe.android.model.PaymentMethodCreateParams
@@ -181,6 +182,7 @@ internal class CardMultilineWidgetTest {
         assertThat(cardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.Visa,
                     loggingTokens = ATTRIBUTION,
                     number = VISA_NO_SPACES,
                     expMonth = 12,
@@ -209,6 +211,7 @@ internal class CardMultilineWidgetTest {
         assertThat(cardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.Visa,
                     loggingTokens = ATTRIBUTION,
                     number = VISA_NO_SPACES,
                     expMonth = 12,
@@ -236,6 +239,7 @@ internal class CardMultilineWidgetTest {
         assertThat(noZipCardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.Visa,
                     loggingTokens = ATTRIBUTION,
                     number = VISA_NO_SPACES,
                     expMonth = 12,
@@ -263,6 +267,7 @@ internal class CardMultilineWidgetTest {
         assertThat(noZipCardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.AmericanExpress,
                     loggingTokens = ATTRIBUTION,
                     number = AMEX_NO_SPACES,
                     expMonth = 12,
@@ -290,6 +295,7 @@ internal class CardMultilineWidgetTest {
         assertThat(noZipCardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.AmericanExpress,
                     loggingTokens = ATTRIBUTION,
                     number = AMEX_NO_SPACES,
                     expMonth = 12,
@@ -539,6 +545,17 @@ internal class CardMultilineWidgetTest {
     }
 
     @Test
+    fun setCvcPlaceholderText_shouldShowCustomPlaceholderTextIfPresent() {
+        cardMultilineWidget.setCvcPlaceholderText("my cool placeholder")
+        assertThat(fullGroup.cvcInputLayout.placeholderText)
+            .isEqualTo("my cool placeholder")
+
+        cardMultilineWidget.setCvcPlaceholderText(null)
+        assertThat(fullGroup.cvcInputLayout.placeholderText)
+            .isEqualTo("123")
+    }
+
+    @Test
     fun initView_whenZipRequiredThenSetToHidden_secondRowLosesPostalCodeAndAdjustsMargin() {
         assertThat(fullGroup.postalCodeInputLayout.visibility)
             .isEqualTo(View.VISIBLE)
@@ -746,6 +763,7 @@ internal class CardMultilineWidgetTest {
         assertThat(cardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.Visa,
                     loggingTokens = ATTRIBUTION,
                     number = VISA_NO_SPACES,
                     expMonth = 12,
@@ -776,6 +794,7 @@ internal class CardMultilineWidgetTest {
         assertThat(cardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.Visa,
                     loggingTokens = ATTRIBUTION,
                     number = VISA_NO_SPACES,
                     expMonth = 12,
@@ -849,6 +868,7 @@ internal class CardMultilineWidgetTest {
         assertThat(cardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.Visa,
                     loggingTokens = ATTRIBUTION,
                     number = VISA_NO_SPACES,
                     expMonth = 12,
@@ -902,6 +922,7 @@ internal class CardMultilineWidgetTest {
         assertThat(cardMultilineWidget.cardParams)
             .isEqualTo(
                 CardParams(
+                    brand = CardBrand.Visa,
                     loggingTokens = ATTRIBUTION,
                     number = VISA_NO_SPACES,
                     expMonth = 12,

@@ -1,11 +1,16 @@
 package com.stripe.android.paymentsheet
 
+import android.os.Bundle
+import android.view.View
+import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
-import com.stripe.android.R
+import com.stripe.android.databinding.FragmentPaymentsheetAddCardBinding
+import com.stripe.android.paymentsheet.PaymentSheetViewModel.CheckoutIdentifier
 import com.stripe.android.paymentsheet.analytics.EventReporter
-import com.stripe.android.paymentsheet.model.AddPaymentMethodConfig
-import java.util.Currency
-import java.util.Locale
+import com.stripe.android.paymentsheet.model.FragmentConfig
+import com.stripe.android.paymentsheet.model.PaymentSelection
+import com.stripe.android.paymentsheet.model.PaymentSheetViewState
+import com.stripe.android.paymentsheet.ui.BaseSheetActivity
 
 internal class PaymentSheetAddCardFragment(
     eventReporter: EventReporter
@@ -21,27 +26,49 @@ internal class PaymentSheetAddCardFragment(
         )
     }
 
-    override fun onGooglePaySelected() {
-        sheetViewModel.checkout(requireActivity())
-    }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        val config = arguments?.getParcelable<FragmentConfig>(
+            BaseSheetActivity.EXTRA_FRAGMENT_CONFIG
+        )
+        val shouldShowGooglePayButton = config?.let {
+            config.isGooglePayReady && config.paymentMethods.isEmpty()
+        } ?: false
 
-    override fun onConfigReady(config: AddPaymentMethodConfig) {
-        super.onConfigReady(config)
+        val viewBinding = FragmentPaymentsheetAddCardBinding.bind(view)
+        val googlePayButton = viewBinding.googlePayButton
+        val messageView = viewBinding.message
+        val addCardHeader = viewBinding.addCardHeader
+        val googlePayDivider = viewBinding.googlePayDivider
 
-        val amount = config.paymentIntent.amount
-        val currencyCode = config.paymentIntent.currency
+        googlePayButton.setOnClickListener {
+            sheetViewModel.updateSelection(PaymentSelection.GooglePay)
+        }
 
-        addCardHeader.text = if (amount != null && currencyCode != null) {
-            val currency = Currency.getInstance(
-                currencyCode.toUpperCase(Locale.ROOT)
-            )
+        googlePayButton.isVisible = shouldShowGooglePayButton
 
-            resources.getString(
-                R.string.stripe_paymentsheet_pay_using_with_amount,
-                CurrencyFormatter().format(amount, currency)
-            )
-        } else {
-            resources.getString(R.string.stripe_paymentsheet_pay_using)
+        googlePayDivider.isVisible = shouldShowGooglePayButton
+        addCardHeader.isVisible = !shouldShowGooglePayButton
+
+        sheetViewModel.selection.observe(viewLifecycleOwner) { paymentSelection ->
+            if (paymentSelection == PaymentSelection.GooglePay) {
+                sheetViewModel.checkout(CheckoutIdentifier.AddFragmentTopGooglePay)
+            }
+        }
+
+        sheetViewModel.getButtonStateObservable(CheckoutIdentifier.AddFragmentTopGooglePay)
+            .observe(viewLifecycleOwner) { viewState ->
+                messageView.isVisible = viewState?.errorMessage != null
+                messageView.text = viewState?.errorMessage?.message
+                googlePayButton.updateState(viewState?.convert())
+
+                if (viewState is PaymentSheetViewState.Reset) {
+                    updateSelection()
+                }
+            }
+
+        sheetViewModel.processing.observe(viewLifecycleOwner) { isProcessing ->
+            googlePayButton.isEnabled = !isProcessing
         }
     }
 }

@@ -1,27 +1,14 @@
 package com.stripe.example.activity
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.stripe.android.paymentsheet.PaymentSheet
 import com.stripe.example.databinding.ActivityPaymentSheetCompleteBinding
-import com.stripe.example.paymentsheet.EphemeralKey
-import com.stripe.example.paymentsheet.PaymentSheetViewModel
 
-class LaunchPaymentSheetCompleteActivity : AppCompatActivity() {
+internal class LaunchPaymentSheetCompleteActivity : BasePaymentSheetActivity() {
     private val viewBinding by lazy {
         ActivityPaymentSheetCompleteBinding.inflate(layoutInflater)
     }
-
-    private val viewModel: PaymentSheetViewModel by viewModels {
-        PaymentSheetViewModel.Factory(
-            application,
-            getPreferences(MODE_PRIVATE)
-        )
-    }
-
-    private lateinit var ephemeralKey: EphemeralKey
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,35 +17,63 @@ class LaunchPaymentSheetCompleteActivity : AppCompatActivity() {
         viewModel.inProgress.observe(this) {
             viewBinding.progressBar.visibility = if (it) View.VISIBLE else View.INVISIBLE
             viewBinding.launch.isEnabled = !it
-            viewBinding.clear.isEnabled = !it
         }
         viewModel.status.observe(this) {
             viewBinding.status.text = it
         }
 
-        viewBinding.clear.setOnClickListener {
-            viewModel.clearKeys()
-            fetchEphemeralKey()
-        }
         viewBinding.launch.setOnClickListener {
-            // TODO(mshafrir-stripe): handle click
+            if (isCustomerEnabled) {
+                fetchEphemeralKey { customerConfig ->
+                    createPaymentIntent(
+                        customerConfig
+                    )
+                }
+            } else {
+                createPaymentIntent(
+                    null
+                )
+            }
         }
 
         fetchEphemeralKey()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
+    private fun createPaymentIntent(
+        customerConfig: PaymentSheet.CustomerConfiguration?
+    ) {
+        viewModel.createPaymentIntent(
+            COUNTRY_CODE,
+            customerId = customerConfig?.id
+        ).observe(this) { result ->
+            result.fold(
+                onSuccess = { json ->
+                    val clientSecret = json.getString("secret")
 
-        // handle result
+                    onPaymentIntent(
+                        clientSecret,
+                        customerConfig
+                    )
+                },
+                onFailure = ::onError
+            )
+        }
     }
 
-    private fun fetchEphemeralKey() {
-        viewModel.fetchEphemeralKey()
-            .observe(this) { newEphemeralKey ->
-                if (newEphemeralKey != null) {
-                    ephemeralKey = newEphemeralKey
-                }
-            }
+    private fun onPaymentIntent(
+        paymentIntentClientSecret: String,
+        customerConfig: PaymentSheet.CustomerConfiguration?
+    ) {
+        viewModel.inProgress.postValue(false)
+
+        // show PaymentSheet
+    }
+
+    override fun onRefreshEphemeralKey() {
+        fetchEphemeralKey()
+    }
+
+    private companion object {
+        private const val COUNTRY_CODE = "us"
     }
 }

@@ -1,10 +1,9 @@
 package com.stripe.android.paymentsheet
 
+import android.animation.LayoutTransition
 import android.content.Context
-import android.content.Intent
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -12,25 +11,35 @@ import com.google.common.truth.Truth.assertThat
 import com.nhaarman.mockitokotlin2.mock
 import com.stripe.android.ApiKeyFixtures
 import com.stripe.android.PaymentConfiguration
-import com.stripe.android.PaymentController
+import com.stripe.android.PaymentIntentResult
+import com.stripe.android.R
 import com.stripe.android.StripeIntentResult
-import com.stripe.android.StripePaymentController
+import com.stripe.android.databinding.PrimaryButtonBinding
+import com.stripe.android.databinding.StripeGooglePayButtonBinding
+import com.stripe.android.googlepay.StripeGooglePayContract
+import com.stripe.android.model.CardBrand
 import com.stripe.android.model.ConfirmPaymentIntentParams
-import com.stripe.android.model.ListPaymentMethodsParams
 import com.stripe.android.model.PaymentIntent
 import com.stripe.android.model.PaymentIntentFixtures
 import com.stripe.android.model.PaymentMethod
+import com.stripe.android.model.PaymentMethodCreateParams
 import com.stripe.android.model.PaymentMethodFixtures
-import com.stripe.android.networking.AbsFakeStripeRepository
-import com.stripe.android.networking.ApiRequest
+import com.stripe.android.payments.DefaultReturnUrl
+import com.stripe.android.payments.FakePaymentFlowResultProcessor
+import com.stripe.android.payments.PaymentFlowResult
+import com.stripe.android.paymentsheet.PaymentSheetViewModel.CheckoutIdentifier
 import com.stripe.android.paymentsheet.analytics.EventReporter
 import com.stripe.android.paymentsheet.analytics.SessionId
+import com.stripe.android.paymentsheet.model.FragmentConfigFixtures
+import com.stripe.android.paymentsheet.model.PaymentIntentClientSecret
 import com.stripe.android.paymentsheet.model.PaymentSelection
+import com.stripe.android.paymentsheet.model.PaymentSheetViewState
+import com.stripe.android.paymentsheet.repositories.StripeIntentRepository
+import com.stripe.android.paymentsheet.ui.PrimaryButtonAnimator
 import com.stripe.android.utils.InjectableActivityScenario
 import com.stripe.android.utils.TestUtils.idleLooper
 import com.stripe.android.utils.TestUtils.viewModelFactoryFor
 import com.stripe.android.utils.injectableActivityScenario
-import com.stripe.android.view.PaymentRelayActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineDispatcher
@@ -40,7 +49,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 
@@ -53,38 +61,20 @@ internal class PaymentSheetActivityTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val testDispatcher = TestCoroutineDispatcher()
 
-    private val paymentMethods = listOf(
-        PaymentMethod("payment_method_id", 0, false, PaymentMethod.Type.Card)
-    )
-
     private val googlePayRepository = FakeGooglePayRepository(true)
-    private val stripeRepository = FakeStripeRepository(PAYMENT_INTENT, paymentMethods)
     private val eventReporter = mock<EventReporter>()
 
-    private val viewModel = PaymentSheetViewModel(
-        publishableKey = ApiKeyFixtures.FAKE_PUBLISHABLE_KEY,
-        stripeAccountId = null,
-        stripeRepository = stripeRepository,
-        paymentController = StripePaymentController(
-            context,
-            ApiKeyFixtures.FAKE_PUBLISHABLE_KEY,
-            stripeRepository,
-            workContext = testDispatcher
-        ),
-        googlePayRepository = googlePayRepository,
-        prefsRepository = mock(),
-        eventReporter = eventReporter,
-        args = PaymentSheetFixtures.ARGS_CUSTOMER_WITH_GOOGLEPAY,
-        workContext = testDispatcher
-    )
+    private val defaultReturnUrl = DefaultReturnUrl.create(context)
+    private val viewModel = createViewModel()
 
     private val contract = PaymentSheetContract()
 
     private val intent = contract.createIntent(
         context,
         PaymentSheetContract.Args(
-            "client_secret",
+            PaymentIntentClientSecret("client_secret"),
             sessionId = SessionId(),
+            statusBarColor = PaymentSheetFixtures.STATUS_BAR_COLOR,
             PaymentSheetFixtures.CONFIG_CUSTOMER
         )
     )
@@ -106,199 +96,473 @@ internal class PaymentSheetActivityTest {
     }
 
     @Test
-    fun `handles clicks outside of bottom sheet`() {
+    fun `bottom sheet expands on start and handles click outside`() {
         val scenario = activityScenario()
-        scenario.launch(intent).onActivity { activity ->
-            // wait for bottom sheet to animate in
-            testDispatcher.advanceTimeBy(BottomSheetController.ANIMATE_IN_DELAY)
-            idleLooper()
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_COLLAPSED)
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
+                assertThat(activity.bottomSheetBehavior.isFitToContents)
+                    .isFalse()
 
-            activity.viewBinding.root.performClick()
-            idleLooper()
+                activity.viewBinding.root.performClick()
+                idleLooper()
 
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
-            assertThat(
-                contract.parseResult(0, shadowOf(activity).resultIntent)
-            ).isEqualTo(
-                PaymentResult.Cancelled(
-                    null,
-                    PAYMENT_INTENT
-                )
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
+            }
+        }
+
+        assertThat(
+            contract.parseResult(
+                scenario.getResult().resultCode,
+                scenario.getResult().resultData
             )
+        ).isEqualTo(
+            PaymentSheetResult.Canceled
+        )
+    }
+
+    @Test
+    fun `updates buy button state on payment methods list`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // Google Pay initially selected as there's no saved selection
+                assertThat(activity.viewBinding.buyButton.isVisible).isFalse()
+                assertThat(activity.viewBinding.googlePayButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.googlePayButton.isEnabled).isTrue()
+
+                viewModel.updateSelection(
+                    PaymentSelection.Saved(PaymentMethodFixtures.CARD_PAYMENT_METHOD)
+                )
+                assertThat(activity.viewBinding.buyButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled).isTrue()
+                assertThat(activity.viewBinding.googlePayButton.isVisible).isFalse()
+
+                viewModel.updateSelection(null)
+                assertThat(activity.viewBinding.buyButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled).isFalse()
+                assertThat(activity.viewBinding.googlePayButton.isVisible).isFalse()
+            }
         }
     }
 
     @Test
-    fun `updates buy button state`() {
+    fun `updates buy button state on add payment`() {
         val scenario = activityScenario()
-        scenario.launch(intent).onActivity { activity ->
-            assertThat(activity.viewBinding.buyButton.isEnabled).isFalse()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                viewModel.transitionTo(
+                    PaymentSheetViewModel.TransitionTarget.AddPaymentMethodFull(
+                        FragmentConfigFixtures.DEFAULT
+                    )
+                )
+                idleLooper()
 
-            viewModel.updateSelection(PaymentSelection.GooglePay)
-            assertThat(activity.viewBinding.buyButton.isEnabled).isTrue()
+                // Initially empty card
+                assertThat(activity.viewBinding.buyButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled).isFalse()
+                assertThat(activity.viewBinding.googlePayButton.isVisible).isFalse()
 
-            viewModel.updateSelection(null)
-            assertThat(activity.viewBinding.buyButton.isEnabled).isFalse()
+                // Update to Google Pay
+                viewModel.updateSelection(PaymentSelection.GooglePay)
+                assertThat(activity.viewBinding.buyButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled).isFalse()
+                assertThat(activity.viewBinding.googlePayButton.isVisible).isFalse()
+                viewModel.onGooglePayResult(StripeGooglePayContract.Result.Canceled)
 
-            scenario.moveToState(Lifecycle.State.DESTROYED)
+                // Update to saved card
+                viewModel.updateSelection(
+                    PaymentSelection.Saved(PaymentMethodFixtures.CARD_PAYMENT_METHOD)
+                )
+                assertThat(activity.viewBinding.buyButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled).isTrue()
+
+                // Back to empty/invalid card
+                viewModel.updateSelection(null)
+                assertThat(activity.viewBinding.buyButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled).isFalse()
+
+                // New valid card
+                viewModel.updateSelection(
+                    PaymentSelection.New.Card(
+                        PaymentMethodCreateParams.create(
+                            card = PaymentMethodCreateParams.Card(
+                                number = "4242424242424242",
+                                cvc = "666",
+                                expiryMonth = 12,
+                                expiryYear = 2050
+                            )
+                        ),
+                        CardBrand.Visa,
+                        shouldSavePaymentMethod = false
+                    )
+                )
+                assertThat(activity.viewBinding.buyButton.isVisible).isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled).isTrue()
+            }
         }
     }
 
     @Test
     fun `handles fragment transitions`() {
         val scenario = activityScenario()
-        scenario.launch(intent).onActivity { activity ->
-            // wait for bottom sheet to animate in
-            testDispatcher.advanceTimeBy(BottomSheetController.ANIMATE_IN_DELAY)
-            idleLooper()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
 
-            assertThat(currentFragment(activity))
-                .isInstanceOf(PaymentSheetPaymentMethodsListFragment::class.java)
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_COLLAPSED)
-            assertThat(activity.viewBinding.bottomSheet.layoutParams.height)
-                .isEqualTo(WRAP_CONTENT)
+                assertThat(currentFragment(activity))
+                    .isInstanceOf(PaymentSheetListFragment::class.java)
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
 
-            viewModel.transitionTo(PaymentSheetViewModel.TransitionTarget.AddPaymentMethodFull)
-            idleLooper()
-            assertThat(currentFragment(activity))
-                .isInstanceOf(PaymentSheetAddCardFragment::class.java)
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
-            assertThat(activity.viewBinding.bottomSheet.layoutParams.height)
-                .isEqualTo(MATCH_PARENT)
+                viewModel.transitionTo(
+                    PaymentSheetViewModel.TransitionTarget.AddPaymentMethodFull(
+                        FragmentConfigFixtures.DEFAULT
+                    )
+                )
+                idleLooper()
+                assertThat(currentFragment(activity))
+                    .isInstanceOf(PaymentSheetAddCardFragment::class.java)
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
 
-            activity.onBackPressed()
-            idleLooper()
-            assertThat(currentFragment(activity))
-                .isInstanceOf(PaymentSheetPaymentMethodsListFragment::class.java)
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_COLLAPSED)
-            assertThat(activity.viewBinding.bottomSheet.layoutParams.height)
-                .isEqualTo(WRAP_CONTENT)
+                activity.onBackPressed()
+                idleLooper()
+                assertThat(currentFragment(activity))
+                    .isInstanceOf(PaymentSheetListFragment::class.java)
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
 
-            activity.onBackPressed()
-            idleLooper()
-            // animating out
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
+                activity.onBackPressed()
+                idleLooper()
+                // animating out
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
+            }
 
             assertThat(
-                contract.parseResult(0, shadowOf(activity).resultIntent)
-            ).isEqualTo(
-                PaymentResult.Cancelled(
-                    null,
-                    PAYMENT_INTENT
+                contract.parseResult(
+                    scenario.getResult().resultCode,
+                    scenario.getResult().resultData
                 )
+            ).isEqualTo(
+                PaymentSheetResult.Canceled
             )
+        }
+    }
+
+    @Test
+    fun `updates navigation button`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                assertThat(activity.toolbar.navigationContentDescription)
+                    .isEqualTo(context.getString(R.string.stripe_paymentsheet_close))
+
+                viewModel.transitionTo(
+                    PaymentSheetViewModel.TransitionTarget.AddPaymentMethodFull(
+                        FragmentConfigFixtures.DEFAULT
+                    )
+                )
+                idleLooper()
+
+                assertThat(activity.toolbar.navigationContentDescription)
+                    .isEqualTo(context.getString(R.string.stripe_paymentsheet_back))
+
+                activity.onBackPressed()
+                idleLooper()
+
+                assertThat(activity.toolbar.navigationContentDescription)
+                    .isEqualTo(context.getString(R.string.stripe_paymentsheet_close))
+
+                activity.onBackPressed()
+                idleLooper()
+                // animating out
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
+            }
         }
     }
 
     @Test
     fun `handles buy button clicks`() {
         val scenario = activityScenario()
-        scenario.launch(intent).onActivity { activity ->
-            // wait for bottom sheet to animate in
-            testDispatcher.advanceTimeBy(BottomSheetController.ANIMATE_IN_DELAY)
-            idleLooper()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
 
-            viewModel.updateSelection(
-                PaymentSelection.Saved(PaymentMethodFixtures.CARD_PAYMENT_METHOD)
-            )
-            assertThat(activity.viewBinding.buyButton.isEnabled)
-                .isTrue()
+                viewModel.updateSelection(
+                    PaymentSelection.Saved(PaymentMethodFixtures.CARD_PAYMENT_METHOD)
+                )
+                assertThat(activity.viewBinding.buyButton.isEnabled)
+                    .isTrue()
 
-            activity.viewBinding.buyButton.performClick()
-            idleLooper()
+                activity.viewBinding.buyButton.performClick()
+                idleLooper()
 
-            assertThat(activity.viewBinding.buyButton.isEnabled)
-                .isFalse()
+                assertThat(activity.viewBinding.buyButton.isEnabled)
+                    .isFalse()
 
-            // payment intent was confirmed and result will be communicated through PaymentRelayActivity
-            val nextActivity = shadowOf(activity).peekNextStartedActivity()
-            assertThat(nextActivity.component?.className)
-                .isEqualTo(PaymentRelayActivity::class.java.name)
+                assertThat(viewModel.startConfirm.value?.peekContent())
+                    .isEqualTo(
+                        ConfirmPaymentIntentParams(
+                            clientSecret = "client_secret",
+                            paymentMethodId = "pm_123456789",
+                            returnUrl = defaultReturnUrl.value
+                        )
+                    )
+            }
         }
     }
 
     @Test
-    fun `reports successful payment intent result`() {
+    fun `Verify animation is enabled for layout transition changes`() {
         val scenario = activityScenario()
-        scenario.launch(intent).onActivity { activity ->
-            // wait for bottom sheet to animate in
-            testDispatcher.advanceTimeBy(500)
-            idleLooper()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
 
-            viewModel.onActivityResult(
-                StripePaymentController.PAYMENT_REQUEST_CODE,
-                Intent().apply {
-                    putExtras(
-                        PaymentController.Result(
-                            "client_secret",
-                            StripeIntentResult.Outcome.SUCCEEDED
-                        ).toBundle()
+                assertThat(
+                    activity.viewBinding.bottomSheet.layoutTransition.isTransitionTypeEnabled(
+                        LayoutTransition.CHANGING
                     )
-                }
-            )
-            idleLooper()
+                ).isTrue()
 
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
-            assertThat(contract.parseResult(0, shadowOf(activity).resultIntent))
-                .isEqualTo(
-                    PaymentResult.Succeeded(PAYMENT_INTENT)
+                assertThat(
+                    activity.viewBinding.fragmentContainerParent.layoutTransition
+                        .isTransitionTypeEnabled(
+                            LayoutTransition.CHANGING
+                        )
+                ).isTrue()
+            }
+        }
+    }
+
+    @Test
+    fun `Verify Ready state updates the buy button label`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                viewModel._viewState.value = PaymentSheetViewState.Reset(null)
+
+                idleLooper()
+
+                val buyBinding = PrimaryButtonBinding.bind(activity.viewBinding.buyButton)
+
+                assertThat(buyBinding.confirmedIcon.isVisible)
+                    .isFalse()
+
+                idleLooper()
+
+                activity.finish()
+            }
+        }
+    }
+
+    @Test
+    fun `Verify processing state disables toolbar`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                viewModel._processing.value = true
+
+                idleLooper()
+
+                assertThat(activity.toolbar.isEnabled).isFalse()
+            }
+        }
+    }
+
+    @Test
+    fun `Verify StartProcessing state updates the buy button label`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                viewModel.checkoutIdentifier = CheckoutIdentifier.SheetBottomBuy
+                viewModel._viewState.value = PaymentSheetViewState.StartProcessing
+
+                idleLooper()
+
+                val buyBinding = PrimaryButtonBinding.bind(activity.viewBinding.buyButton)
+                assertThat(buyBinding.label.text)
+                    .isEqualTo(activity.getString(R.string.stripe_paymentsheet_primary_button_processing))
+            }
+        }
+    }
+
+    @Test
+    fun `Verify FinishProcessing state calls the callback`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity {
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                viewModel.checkoutIdentifier = CheckoutIdentifier.SheetBottomBuy
+
+                var finishProcessingCalled = false
+                viewModel._viewState.value = PaymentSheetViewState.FinishProcessing {
+                    finishProcessingCalled = true
+                }
+
+                idleLooper()
+
+                testDispatcher.advanceTimeBy(PrimaryButtonAnimator.HOLD_ANIMATION_ON_SLIDE_IN_COMPLETION)
+
+                assertThat(finishProcessingCalled).isTrue()
+            }
+        }
+    }
+
+    @Test
+    fun `Verify StartProcessing state updates the google button label`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                viewModel.checkoutIdentifier = CheckoutIdentifier.SheetBottomGooglePay
+                viewModel._viewState.value = PaymentSheetViewState.StartProcessing
+
+                idleLooper()
+
+                val googlePayButton =
+                    StripeGooglePayButtonBinding.bind(activity.viewBinding.googlePayButton)
+                assertThat(googlePayButton.primaryButton.viewBinding.label.text)
+                    .isEqualTo(activity.getString(R.string.stripe_paymentsheet_primary_button_processing))
+            }
+        }
+    }
+
+    @Test
+    fun `Verify FinishProcessing state calls the callback on google pay view state observer`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity {
+                viewModel.checkoutIdentifier = CheckoutIdentifier.SheetBottomGooglePay
+
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                var finishProcessingCalled = false
+                viewModel._viewState.value = PaymentSheetViewState.FinishProcessing {
+                    finishProcessingCalled = true
+                }
+
+                idleLooper()
+
+                testDispatcher.advanceTimeBy(PrimaryButtonAnimator.HOLD_ANIMATION_ON_SLIDE_IN_COMPLETION)
+
+                assertThat(finishProcessingCalled).isTrue()
+            }
+        }
+    }
+
+    @Test
+    fun `Verify ProcessResult state closes the sheet`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                viewModel._paymentSheetResult.value = PaymentSheetResult.Completed
+
+                idleLooper()
+
+                // wait animate time...
+                testDispatcher.advanceTimeBy(
+                    PrimaryButtonAnimator.HOLD_ANIMATION_ON_SLIDE_IN_COMPLETION
                 )
+
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
+            }
+        }
+    }
+
+    @Test
+    fun `successful payment should dismiss bottom sheet`() {
+        val viewModel = createViewModel(
+            paymentIntentResult = PaymentIntentResult(PaymentIntentFixtures.PI_SUCCEEDED)
+        )
+
+        val scenario = activityScenario(viewModel)
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                testDispatcher.advanceTimeBy(500)
+                idleLooper()
+
+                viewModel.checkoutIdentifier = CheckoutIdentifier.SheetBottomBuy
+
+                viewModel.onPaymentFlowResult(
+                    PaymentFlowResult.Unvalidated(
+                        "client_secret",
+                        StripeIntentResult.Outcome.SUCCEEDED
+                    )
+                )
+                idleLooper()
+
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
+            }
         }
     }
 
     @Test
     fun `shows add card fragment when no payment methods available`() {
-        val viewModel = PaymentSheetViewModel(
-            publishableKey = ApiKeyFixtures.FAKE_PUBLISHABLE_KEY,
-            stripeAccountId = null,
-            stripeRepository = FakeStripeRepository(PAYMENT_INTENT, listOf()),
-            paymentController = StripePaymentController(
-                context,
-                ApiKeyFixtures.FAKE_PUBLISHABLE_KEY,
-                stripeRepository,
-                workContext = testDispatcher
-            ),
-            googlePayRepository = googlePayRepository,
-            prefsRepository = mock(),
-            eventReporter = eventReporter,
-            args = PaymentSheetFixtures.ARGS_CUSTOMER_WITH_GOOGLEPAY,
-            workContext = testDispatcher
+        val scenario = activityScenario(
+            createViewModel(
+                paymentMethods = emptyList()
+            )
         )
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
 
-        val scenario = activityScenario(viewModel)
-        scenario.launch(intent).onActivity { activity ->
-            // wait for bottom sheet to animate in
-            testDispatcher.advanceTimeBy(BottomSheetController.ANIMATE_IN_DELAY)
-            idleLooper()
+                assertThat(currentFragment(activity))
+                    .isInstanceOf(PaymentSheetAddCardFragment::class.java)
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
 
-            assertThat(currentFragment(activity))
-                .isInstanceOf(PaymentSheetAddCardFragment::class.java)
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_COLLAPSED)
-            assertThat(activity.viewBinding.bottomSheet.layoutParams.height)
-                .isEqualTo(MATCH_PARENT)
+                // make sure loading fragment isn't in back stack
+                activity.onBackPressed()
+                idleLooper()
 
-            // make sure loading fragment isn't in back stack
-            activity.onBackPressed()
-            idleLooper()
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
+            }
 
-            assertThat(activity.bottomSheetBehavior.state)
-                .isEqualTo(BottomSheetBehavior.STATE_HIDDEN)
             assertThat(
-                contract.parseResult(0, shadowOf(activity).resultIntent)
-            ).isEqualTo(
-                PaymentResult.Cancelled(
-                    null,
-                    PAYMENT_INTENT
+                contract.parseResult(
+                    scenario.getResult().resultCode,
+                    scenario.getResult().resultData
                 )
+            ).isEqualTo(
+                PaymentSheetResult.Canceled
             )
         }
     }
@@ -306,22 +570,93 @@ internal class PaymentSheetActivityTest {
     @Test
     fun `buyButton is only enabled when not processing, transition target, and a selection has been made`() {
         val scenario = activityScenario(viewModel)
-        scenario.launch(intent).onActivity { activity ->
-            assertThat(activity.viewBinding.buyButton.isEnabled)
-                .isFalse()
-            // wait for bottom sheet to animate in
-            testDispatcher.advanceTimeBy(BottomSheetController.ANIMATE_IN_DELAY)
-            idleLooper()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                assertThat(activity.viewBinding.buyButton.isEnabled)
+                    .isTrue()
+                // wait for bottom sheet to animate in
+                idleLooper()
 
-            assertThat(activity.viewBinding.buyButton.isEnabled)
-                .isFalse()
+                assertThat(activity.viewBinding.buyButton.isEnabled)
+                    .isTrue()
 
-            viewModel.updateSelection(PaymentSelection.GooglePay)
-            idleLooper()
+                viewModel.updateSelection(PaymentSelection.GooglePay)
+                idleLooper()
 
-            assertThat(activity.viewBinding.buyButton.isEnabled)
-                .isTrue()
+                assertThat(activity.viewBinding.buyButton.isEnabled)
+                    .isTrue()
+            }
         }
+    }
+
+    @Test
+    fun `sets expected statusBarColor`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                assertThat(activity.window.statusBarColor)
+                    .isEqualTo(PaymentSheetFixtures.STATUS_BAR_COLOR)
+                scenario.moveToState(Lifecycle.State.DESTROYED)
+            }
+        }
+    }
+
+    @Test
+    fun `Complete fragment transactions prior to setting the sheet mode and thus the back button`() {
+        val scenario = activityScenario()
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                idleLooper()
+
+                assertThat(currentFragment(activity))
+                    .isInstanceOf(PaymentSheetListFragment::class.java)
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
+
+                viewModel.transitionTo(
+                    PaymentSheetViewModel.TransitionTarget.SelectSavedPaymentMethod(
+                        FragmentConfigFixtures.DEFAULT
+                    )
+                )
+                viewModel.transitionTo(
+                    PaymentSheetViewModel.TransitionTarget.AddPaymentMethodFull(
+                        FragmentConfigFixtures.DEFAULT
+                    )
+                )
+
+                idleLooper()
+
+                assertThat(currentFragment(activity))
+                    .isInstanceOf(PaymentSheetAddCardFragment::class.java)
+                assertThat(activity.bottomSheetBehavior.state)
+                    .isEqualTo(BottomSheetBehavior.STATE_EXPANDED)
+            }
+        }
+    }
+
+    @Test
+    fun `if fetched PaymentIntent is confirmed then should return Completed result`() {
+        val scenario = activityScenario(
+            createViewModel(
+                paymentIntent = PaymentIntentFixtures.PI_SUCCEEDED
+            )
+        )
+        scenario.launch(intent).use {
+            it.onActivity { activity ->
+                // wait for bottom sheet to animate in
+                activity.finish()
+            }
+        }
+
+        assertThat(
+            contract.parseResult(
+                scenario.getResult().resultCode,
+                scenario.getResult().resultData
+            )
+        ).isEqualTo(
+            PaymentSheetResult.Completed
+        )
     }
 
     private fun currentFragment(activity: PaymentSheetActivity) =
@@ -337,33 +672,33 @@ internal class PaymentSheetActivityTest {
         }
     }
 
-    private class FakeStripeRepository(
-        val paymentIntent: PaymentIntent,
-        val paymentMethods: List<PaymentMethod>
-    ) : AbsFakeStripeRepository() {
-        override suspend fun getPaymentMethods(
-            listPaymentMethodsParams: ListPaymentMethodsParams,
-            publishableKey: String,
-            productUsageTokens: Set<String>,
-            requestOptions: ApiRequest.Options
-        ): List<PaymentMethod> {
-            return paymentMethods
+    private fun createViewModel(
+        paymentIntent: PaymentIntent = PAYMENT_INTENT,
+        paymentMethods: List<PaymentMethod> = PAYMENT_METHODS,
+        paymentIntentResult: PaymentIntentResult = PaymentIntentResult(paymentIntent)
+    ): PaymentSheetViewModel {
+        val paymentFlowResultProcessor = FakePaymentFlowResultProcessor().also {
+            it.paymentIntentResult = paymentIntentResult
         }
 
-        override suspend fun confirmPaymentIntent(
-            confirmPaymentIntentParams: ConfirmPaymentIntentParams,
-            options: ApiRequest.Options,
-            expandFields: List<String>
-        ): PaymentIntent = paymentIntent
-
-        override suspend fun retrievePaymentIntent(
-            clientSecret: String,
-            options: ApiRequest.Options,
-            expandFields: List<String>
-        ): PaymentIntent = paymentIntent
+        return PaymentSheetViewModel(
+            publishableKey = ApiKeyFixtures.FAKE_PUBLISHABLE_KEY,
+            stripeAccountId = null,
+            stripeIntentRepository = StripeIntentRepository.Static(paymentIntent),
+            paymentMethodsRepository = FakePaymentMethodsRepository(paymentMethods),
+            paymentFlowResultProcessor = paymentFlowResultProcessor,
+            googlePayRepository = googlePayRepository,
+            prefsRepository = FakePrefsRepository(),
+            eventReporter = eventReporter,
+            args = PaymentSheetFixtures.ARGS_CUSTOMER_WITH_GOOGLEPAY,
+            defaultReturnUrl = defaultReturnUrl,
+            workContext = testDispatcher,
+            application = ApplicationProvider.getApplicationContext()
+        )
     }
 
     private companion object {
         private val PAYMENT_INTENT = PaymentIntentFixtures.PI_REQUIRES_PAYMENT_METHOD
+        private val PAYMENT_METHODS = listOf(PaymentMethodFixtures.CARD_PAYMENT_METHOD)
     }
 }

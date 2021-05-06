@@ -9,7 +9,6 @@ import android.text.method.TextKeyListener
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View.OnFocusChangeListener
-import android.widget.AdapterView
 import android.widget.EditText
 import android.widget.FrameLayout
 import androidx.annotation.VisibleForTesting
@@ -20,12 +19,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.stripe.android.R
 import com.stripe.android.databinding.StripeBillingAddressLayoutBinding
-import com.stripe.android.databinding.StripeCountryDropdownItemBinding
 import com.stripe.android.model.Address
-import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.model.CountryCode
 import com.stripe.android.view.Country
-import com.stripe.android.view.CountryAdapter
-import com.stripe.android.view.CountryAutoCompleteTextViewValidator
 import com.stripe.android.view.CountryUtils
 import com.stripe.android.view.PostalCodeValidator
 import java.util.Locale
@@ -36,33 +32,31 @@ internal class BillingAddressView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
+
+    /**
+     * Listener to notify events related to [postalCodeView]
+     */
+    interface PostalCodeViewListener {
+        fun onLosingFocus(country: Country?, isPostalValid: Boolean)
+        fun onGainingFocus(country: Country?, isPostalValid: Boolean)
+        fun onCountryChanged(country: Country?, isPostalValid: Boolean)
+    }
+
     @VisibleForTesting
-    internal var level: PaymentSheet.BillingAddressCollectionLevel by Delegates.observable(
-        PaymentSheet.BillingAddressCollectionLevel.Automatic
+    internal var level: BillingAddressCollectionLevel by Delegates.observable(
+        BillingAddressCollectionLevel.Automatic
     ) { _, oldLevel, newLevel ->
         if (oldLevel != newLevel) {
             configureForLevel()
         }
     }
 
+    internal var onFocus: () -> Unit = {}
+
     private val viewBinding = StripeBillingAddressLayoutBinding.inflate(
         LayoutInflater.from(context),
         this
     )
-
-    private val countryAdapter = CountryAdapter(
-        context,
-        CountryUtils.getOrderedCountries(
-            ConfigurationCompat.getLocales(context.resources.configuration)[0]
-        ),
-        R.layout.stripe_country_dropdown_item
-    ) {
-        StripeCountryDropdownItemBinding.inflate(
-            LayoutInflater.from(context),
-            it,
-            false
-        ).root
-    }
 
     private val postalCodeValidator = PostalCodeValidator()
 
@@ -70,7 +64,10 @@ internal class BillingAddressView @JvmOverloads constructor(
     internal val address: LiveData<Address?> = _address
 
     @VisibleForTesting
-    internal val countryView = viewBinding.country
+    internal val countryLayout = viewBinding.countryLayout
+
+    @VisibleForTesting
+    internal val countryView = countryLayout.countryAutocomplete
 
     @VisibleForTesting
     internal val cityPostalContainer = viewBinding.cityPostalContainer
@@ -100,15 +97,9 @@ internal class BillingAddressView @JvmOverloads constructor(
     internal val stateLayout = viewBinding.stateLayout
 
     @VisibleForTesting
-    internal var selectedCountry: Country? by Delegates.observable(
-        null
-    ) { _, _, newCountry ->
-        updateStateView(newCountry)
-        updatePostalCodeView(newCountry)
-        _address.value = createAddress()
-    }
+    internal var postalCodeViewListener: PostalCodeViewListener? = null
 
-    private val isUnitedStates: Boolean get() = selectedCountry?.code == Locale.US.country
+    private val isUnitedStates: Boolean get() = CountryCode.isUS(countryLayout.selectedCountryCode)
 
     private var postalCodeConfig: PostalCodeConfig by Delegates.observable(
         PostalCodeConfig.Global
@@ -116,6 +107,23 @@ internal class BillingAddressView @JvmOverloads constructor(
         postalCodeView.filters = arrayOf(InputFilter.LengthFilter(config.maxLength))
         postalCodeView.keyListener = config.getKeyListener()
         postalCodeView.inputType = config.inputType
+    }
+
+    private val newCountryCodeCallback = { newCountryCode: CountryCode ->
+        updateStateView(newCountryCode)
+        updatePostalCodeView(newCountryCode)
+        _address.value = createAddress()
+
+        postalCodeValidator.isValid(
+            postalCode = postalCodeView.value.orEmpty(),
+            countryCode = newCountryCode.value
+        ).let { isPostalValid ->
+            postalCodeViewListener?.onCountryChanged(
+                CountryUtils.getCountryByCode(newCountryCode, getLocale()),
+                isPostalValid
+            )
+            postalCodeView.shouldShowError = !isPostalValid
+        }
     }
 
     private val requiredViews = setOf(
@@ -135,94 +143,87 @@ internal class BillingAddressView @JvmOverloads constructor(
         stateView,
     )
 
+    private val allFields = setOf(
+        address1View,
+        address2View,
+        cityView,
+        stateView,
+        postalCodeView,
+        countryView
+    )
+
     init {
-        configureCountryAutoComplete()
+        countryLayout.countryCodeChangeCallback = newCountryCodeCallback
+        // Since the callback is set after CountryAutoCompleteTextView is fully initialized,
+        // need to manually trigger the callback once to pick up the initial country
+        countryLayout.selectedCountryCode?.let { it ->
+            newCountryCodeCallback(it)
+        }
+
         configureForLevel()
 
-        setOf(
-            postalCodeView, address1View, address2View, cityView, stateView
-        ).forEach { editText ->
+        allFields.forEach { editText ->
             editText.doAfterTextChanged {
                 _address.value = createAddress()
             }
-        }
-    }
 
-    private fun configureCountryAutoComplete() {
-        countryView.threshold = 0
-        countryView.setAdapter(countryAdapter)
-        countryView.onItemClickListener =
-            AdapterView.OnItemClickListener { _, _, position, _ ->
-                updatedSelectedCountryCode(countryAdapter.getItem(position))
+            editText.onFocusChangeListener = OnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    onFocus()
+                }
             }
-        countryView.onFocusChangeListener = OnFocusChangeListener { _, focused ->
-            if (focused) {
-                countryView.showDropDown()
+        }
+
+        postalCodeView.internalFocusChangeListeners.add { _, hasFocus ->
+            val isPostalValid = countryLayout.selectedCountryCode?.let { countryCode ->
+                postalCodeValidator.isValid(
+                    postalCode = postalCodeView.value.orEmpty(),
+                    countryCode = countryCode.value
+                )
+            } ?: false
+
+            postalCodeView.shouldShowError =
+                !hasFocus && !postalCodeView.value.isNullOrBlank() && !isPostalValid
+
+            if (hasFocus) {
+                postalCodeViewListener?.onGainingFocus(
+                    countryLayout.selectedCountryCode?.let {
+                        CountryUtils.getCountryByCode(it, getLocale())
+                    },
+                    isPostalValid
+                )
             } else {
-                val countryEntered = countryView.text.toString()
-                updateUiForCountryEntered(countryEntered)
+                postalCodeViewListener?.onLosingFocus(
+                    countryLayout.selectedCountryCode?.let {
+                        CountryUtils.getCountryByCode(it, getLocale())
+                    },
+                    isPostalValid
+                )
+                postalCodeView.shouldShowError =
+                    !postalCodeView.value.isNullOrBlank() && !isPostalValid
             }
         }
-
-        selectedCountry = countryAdapter.firstItem
-        updateInitialCountry()
-
-        countryView.validator = CountryAutoCompleteTextViewValidator(
-            countryAdapter
-        ) { country ->
-            selectedCountry = country
-        }
-    }
-
-    private fun updateInitialCountry() {
-        val initialCountry = countryAdapter.firstItem
-        countryView.setText(initialCountry.name)
-        selectedCountry = initialCountry
-    }
-
-    @VisibleForTesting
-    internal fun updateUiForCountryEntered(displayCountryEntered: String) {
-        val country = CountryUtils.getCountryByName(displayCountryEntered)
-
-        // If the user-typed country matches a valid country, update the selected country
-        // Otherwise, revert back to last valid country if country is not recognized.
-        val displayCountry = country?.let {
-            updatedSelectedCountryCode(it)
-            displayCountryEntered
-        } ?: selectedCountry?.name
-
-        countryView.setText(displayCountry)
-    }
-
-    private fun updatedSelectedCountryCode(country: Country) {
-        if (selectedCountry != country) {
-            selectedCountry = country
-        }
-    }
-
-    internal fun validateCountry() {
-        countryView.performValidation()
     }
 
     /**
      * An [Address] if the country and postal code are valid; otherwise `null`.
      */
     private fun createAddress(): Address? {
-        return selectedCountry?.code?.let { countryCode ->
+        return countryLayout.selectedCountryCode?.let { countryCode ->
             val postalCode = postalCodeView.value
             val isPostalCodeValid = postalCodeValidator.isValid(
                 postalCode = postalCode.orEmpty(),
-                countryCode = countryCode
+                countryCode = countryCode.value
             )
             if (isPostalCodeValid) {
                 when (level) {
-                    PaymentSheet.BillingAddressCollectionLevel.Automatic -> {
-                        Address(
-                            country = countryCode,
-                            postalCode = postalCode
-                        )
+                    BillingAddressCollectionLevel.Automatic -> {
+                        Address.Builder()
+                            .setCountryCode(countryCode)
+                            .setPostalCode(postalCode)
+                            .build()
                     }
-                    PaymentSheet.BillingAddressCollectionLevel.Required -> {
+                    BillingAddressCollectionLevel.Required -> {
                         createRequiredAddress(countryCode, postalCode)
                     }
                 }
@@ -233,7 +234,7 @@ internal class BillingAddressView @JvmOverloads constructor(
     }
 
     private fun createRequiredAddress(
-        countryCode: String,
+        countryCode: CountryCode,
         postalCode: String?
     ): Address? {
         val line1 = address1View.value
@@ -243,22 +244,22 @@ internal class BillingAddressView @JvmOverloads constructor(
 
         return if (line1 != null && city != null) {
             if (!isUnitedStates) {
-                Address(
-                    country = countryCode,
-                    postalCode = postalCode,
-                    line1 = line1,
-                    line2 = line2,
-                    city = city
-                )
+                Address.Builder()
+                    .setCountryCode(countryCode)
+                    .setPostalCode(postalCode)
+                    .setLine1(line1)
+                    .setLine2(line2)
+                    .setCity(city)
+                    .build()
             } else if (state != null) {
-                Address(
-                    country = countryCode,
-                    postalCode = postalCode,
-                    line1 = line1,
-                    line2 = line2,
-                    city = city,
-                    state = state
-                )
+                Address.Builder()
+                    .setCountryCode(countryCode)
+                    .setPostalCode(postalCode)
+                    .setLine1(line1)
+                    .setLine2(line2)
+                    .setCity(city)
+                    .setState(state)
+                    .build()
             } else {
                 null
             }
@@ -267,15 +268,15 @@ internal class BillingAddressView @JvmOverloads constructor(
         }
     }
 
-    private fun updateStateView(country: Country?) {
-        when (country?.code?.toUpperCase(Locale.ROOT)) {
-            "US" -> {
+    private fun updateStateView(countryCode: CountryCode?) {
+        when {
+            CountryCode.isUS(countryCode) -> {
                 R.string.address_label_state
             }
-            "CA" -> {
+            CountryCode.isCA(countryCode) -> {
                 R.string.address_label_province
             }
-            "GB" -> {
+            CountryCode.isGB(countryCode) -> {
                 R.string.address_label_county
             }
             else -> {
@@ -286,27 +287,36 @@ internal class BillingAddressView @JvmOverloads constructor(
         }
     }
 
-    private fun updatePostalCodeView(country: Country?) {
-        val shouldShowPostalCode = country == null ||
-            CountryUtils.doesCountryUsePostalCode(country.code)
+    private fun updatePostalCodeView(countryCode: CountryCode?) {
+        val shouldShowPostalCode = countryCode == null ||
+            CountryUtils.doesCountryUsePostalCode(countryCode)
         postalCodeLayout.isVisible = shouldShowPostalCode
 
-        val shouldShowPostalCodeContainer = level == PaymentSheet.BillingAddressCollectionLevel.Required || shouldShowPostalCode
+        val shouldShowPostalCodeContainer =
+            level == BillingAddressCollectionLevel.Required || shouldShowPostalCode
         viewBinding.cityPostalDivider.isVisible = shouldShowPostalCodeContainer
         viewBinding.cityPostalContainer.isVisible = shouldShowPostalCodeContainer
 
-        postalCodeConfig = if (country?.code == "US") {
+        postalCodeConfig = if (CountryCode.isUS(countryCode)) {
             PostalCodeConfig.UnitedStates
         } else {
             PostalCodeConfig.Global
         }
+
+        viewBinding.postalCodeLayout.hint = resources.getString(
+            if (CountryCode.isUS(countryCode)) {
+                R.string.acc_label_zip_short
+            } else {
+                R.string.address_label_postal_code
+            }
+        )
     }
 
     override fun setEnabled(enabled: Boolean) {
         super.setEnabled(enabled)
 
         setOf(
-            viewBinding.countryLayout,
+            countryLayout,
             viewBinding.address1Layout,
             viewBinding.address2Layout,
             viewBinding.cityLayout,
@@ -319,10 +329,10 @@ internal class BillingAddressView @JvmOverloads constructor(
 
     private fun configureForLevel() {
         when (level) {
-            PaymentSheet.BillingAddressCollectionLevel.Automatic -> {
+            BillingAddressCollectionLevel.Automatic -> {
                 requiredViews.forEach { it.isVisible = false }
             }
-            PaymentSheet.BillingAddressCollectionLevel.Required -> {
+            BillingAddressCollectionLevel.Required -> {
                 requiredViews.forEach { it.isVisible = true }
             }
         }
@@ -331,12 +341,30 @@ internal class BillingAddressView @JvmOverloads constructor(
 
     fun focusFirstField() {
         when (level) {
-            PaymentSheet.BillingAddressCollectionLevel.Automatic -> {
+            BillingAddressCollectionLevel.Automatic -> {
                 postalCodeLayout.requestFocus()
             }
-            PaymentSheet.BillingAddressCollectionLevel.Required -> {
+            BillingAddressCollectionLevel.Required -> {
                 viewBinding.address1Layout.requestFocus()
             }
+        }
+    }
+
+    internal fun populate(address: Address?) {
+        address?.let { it ->
+            // The postal code needs to be set prior to the country, because the
+            // country will trigger a validation of the postal code, which will be
+            // invalid if not set first.
+            this.postalCodeView.setText(it.postalCode)
+
+            it.countryCode?.let {
+                this.countryLayout.selectedCountryCode = it
+                this.countryView.setText(CountryUtils.getDisplayCountry(it, getLocale()))
+            }
+            this.address1View.setText(it.line1)
+            this.address2View.setText(it.line2)
+            this.cityView.setText(it.city)
+            this.stateView.setText(it.state)
         }
     }
 
@@ -346,6 +374,10 @@ internal class BillingAddressView @JvmOverloads constructor(
                 it.isNullOrBlank()
             }
         }
+
+    private fun getLocale(): Locale {
+        return ConfigurationCompat.getLocales(context.resources.configuration)[0]
+    }
 
     internal sealed class PostalCodeConfig {
         abstract val maxLength: Int
@@ -368,5 +400,17 @@ internal class BillingAddressView @JvmOverloads constructor(
                 return TextKeyListener.getInstance()
             }
         }
+    }
+
+    internal enum class BillingAddressCollectionLevel {
+        /**
+         * (Default) PaymentSheet will only collect the necessary billing address information.
+         */
+        Automatic,
+
+        /**
+         * PaymentSheet will always collect full billing address details.
+         */
+        Required
     }
 }

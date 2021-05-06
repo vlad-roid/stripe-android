@@ -17,9 +17,8 @@ internal sealed class PaymentOptionResult(
     }
 
     @Parcelize
-    data class Succeeded(
-        val paymentSelection: PaymentSelection
-    ) : PaymentOptionResult(Activity.RESULT_OK)
+    data class Succeeded(val paymentSelection: PaymentSelection) :
+        PaymentOptionResult(Activity.RESULT_OK)
 
     @Parcelize
     data class Failed(
@@ -27,7 +26,7 @@ internal sealed class PaymentOptionResult(
     ) : PaymentOptionResult(Activity.RESULT_CANCELED)
 
     @Parcelize
-    data class Cancelled(
+    data class Canceled(
         val mostRecentError: Throwable?
     ) : PaymentOptionResult(Activity.RESULT_CANCELED)
 

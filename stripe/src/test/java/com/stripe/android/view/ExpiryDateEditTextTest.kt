@@ -1,11 +1,19 @@
 package com.stripe.android.view
 
+import android.content.Context
+import android.text.TextWatcher
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.times
+import com.nhaarman.mockitokotlin2.verify
+import com.nhaarman.mockitokotlin2.verifyNoMoreInteractions
 import com.stripe.android.R
 import com.stripe.android.model.ExpirationDate
 import com.stripe.android.testharness.ViewTestUtils
+import com.stripe.android.utils.TestUtils.idleLooper
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.util.Calendar
@@ -16,6 +24,7 @@ import kotlin.test.Test
  */
 @RunWith(RobolectricTestRunner::class)
 class ExpiryDateEditTextTest {
+    private val context: Context = ApplicationProvider.getApplicationContext<Context>()
     private val expiryDateEditText = ExpiryDateEditText(
         ContextThemeWrapper(
             ApplicationProvider.getApplicationContext(),
@@ -185,6 +194,8 @@ class ExpiryDateEditTextTest {
 
         assertThat(expiryDateEditText.shouldShowError)
             .isTrue()
+        assertThat(expiryDateEditText.errorMessage)
+            .isEqualTo(context.getString(R.string.incomplete_expiry_date))
         assertThat(expiryDateEditText.text.toString())
             .isEqualTo("14")
     }
@@ -195,6 +206,8 @@ class ExpiryDateEditTextTest {
 
         assertThat(expiryDateEditText.shouldShowError)
             .isTrue()
+        assertThat(expiryDateEditText.errorMessage)
+            .isEqualTo(context.getString(R.string.incomplete_expiry_date))
         assertThat(expiryDateEditText.text.toString())
             .isEqualTo("14/3")
     }
@@ -226,6 +239,8 @@ class ExpiryDateEditTextTest {
 
         assertThat(expiryDateEditText.shouldShowError)
             .isTrue()
+        assertThat(expiryDateEditText.errorMessage)
+            .isEqualTo(context.getString(R.string.invalid_expiry_year))
         assertThat(invocations)
             .isEqualTo(0)
     }
@@ -245,6 +260,8 @@ class ExpiryDateEditTextTest {
         expiryDateEditText.append("12/12")
         assertThat(expiryDateEditText.shouldShowError)
             .isTrue()
+        assertThat(expiryDateEditText.errorMessage)
+            .isEqualTo(context.getString(R.string.invalid_expiry_year))
 
         ViewTestUtils.sendDeleteKeyEvent(expiryDateEditText)
         assertThat(expiryDateEditText.text.toString())
@@ -255,6 +272,26 @@ class ExpiryDateEditTextTest {
         // The date is no longer "in error", but it still shouldn't have triggered the listener.
         assertThat(invocations)
             .isEqualTo(0)
+    }
+
+    @Test
+    fun clearingDate_doesNotShowError() {
+        expiryDateEditText.append("15")
+        assertThat(expiryDateEditText.shouldShowError).isTrue()
+        expiryDateEditText.setText("")
+        assertThat(expiryDateEditText.text.isNullOrBlank()).isTrue()
+        assertThat(expiryDateEditText.shouldShowError).isFalse()
+    }
+
+    @Test
+    fun inputCompleteDate_whenMonthInvalid_showsInvalidMonth() {
+        expiryDateEditText.append("15")
+        expiryDateEditText.append("50")
+
+        assertThat(expiryDateEditText.shouldShowError)
+            .isTrue()
+        assertThat(expiryDateEditText.errorMessage)
+            .isEqualTo(context.getString(R.string.invalid_expiry_month))
     }
 
     @Test
@@ -278,7 +315,7 @@ class ExpiryDateEditTextTest {
 
     @Test
     fun validatedDate_whenDateIsValidFormatButExpired_returnsNull() {
-        // This test will be invalid if run after the year 2050. Please update the code.
+        // This test will be invalid if run after the year 2080. Please update the code.
         assertThat(Calendar.getInstance().get(Calendar.YEAR) < 2080)
             .isTrue()
 
@@ -348,5 +385,70 @@ class ExpiryDateEditTextTest {
         ViewTestUtils.sendDeleteKeyEvent(expiryDateEditText)
         assertThat(expiryDateEditText.fieldText)
             .isEqualTo("12 ")
+    }
+
+    @Test
+    fun `test setText with null month`() {
+        expiryDateEditText.setText(null as Int?, null as Int?)
+        assertThat(expiryDateEditText.fieldText)
+            .isEqualTo("")
+    }
+
+    @Test
+    fun `test setText with month and year`() {
+        expiryDateEditText.setText(3, 4)
+        assertThat(expiryDateEditText.fieldText)
+            .isEqualTo("03/04")
+    }
+
+    @Test
+    fun verifyAdditionalTextChangeListenerGetTriggeredOnlyOnce() {
+        val textChangeListener = mock<TextWatcher>()
+        expiryDateEditText.addTextChangedListener(textChangeListener)
+        expiryDateEditText.setText("1")
+
+        idleLooper()
+
+        verify(textChangeListener, times(1)).afterTextChanged(any())
+    }
+
+    @Test
+    fun `when losing focus and has invalid date then error message listener should trigger`() {
+        val errorMessageListener = mock<StripeEditText.ErrorMessageListener>()
+        expiryDateEditText.requestFocus()
+        expiryDateEditText.append("1")
+        expiryDateEditText.setErrorMessageListener(errorMessageListener)
+        expiryDateEditText.clearFocus()
+
+        idleLooper()
+
+        verify(errorMessageListener).displayErrorMessage(context.getString(R.string.incomplete_expiry_date))
+    }
+
+    @Test
+    fun `when losing focus and has valid date then error message listener should not trigger`() {
+        val errorMessageListener = mock<StripeEditText.ErrorMessageListener>()
+        expiryDateEditText.requestFocus()
+        expiryDateEditText.append("12/50")
+        expiryDateEditText.setErrorMessageListener(errorMessageListener)
+        expiryDateEditText.clearFocus()
+
+        idleLooper()
+
+        verifyNoMoreInteractions(errorMessageListener)
+    }
+
+    @Test
+    fun `when losing focus and has empty text then error message listener should not trigger`() {
+        val errorMessageListener = mock<StripeEditText.ErrorMessageListener>()
+        expiryDateEditText.requestFocus()
+        expiryDateEditText.append("1")
+        expiryDateEditText.setText("")
+        expiryDateEditText.setErrorMessageListener(errorMessageListener)
+        expiryDateEditText.clearFocus()
+
+        idleLooper()
+
+        verifyNoMoreInteractions(errorMessageListener)
     }
 }

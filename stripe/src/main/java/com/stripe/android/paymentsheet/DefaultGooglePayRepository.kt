@@ -10,7 +10,11 @@ import com.stripe.android.GooglePayJsonFactory
 import com.stripe.android.Logger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 
+/**
+ * The default implementation of [GooglePayRepository].
+ */
 internal class DefaultGooglePayRepository(
     private val context: Context,
     private val environment: PaymentSheet.GooglePayConfiguration.Environment,
@@ -33,7 +37,13 @@ internal class DefaultGooglePayRepository(
         Wallet.getPaymentsClient(context, options)
     }
 
-    override fun isReady(): Flow<Boolean?> {
+    /**
+     * @return a [Flow] that represents the result of a [PaymentsClient.isReadyToPay] operation.
+     *
+     * See [Google Pay API docs](https://developers.google.com/android/reference/com/google/android/gms/wallet/PaymentsClient#isReadyToPay(com.google.android.gms.wallet.IsReadyToPayRequest))
+     * for more details.
+     */
+    override fun isReady(): Flow<Boolean> {
         val isReadyState = MutableStateFlow<Boolean?>(null)
 
         val request = IsReadyToPayRequest.fromJson(
@@ -51,6 +61,6 @@ internal class DefaultGooglePayRepository(
                 isReadyState.value = isReady
             }
 
-        return isReadyState
+        return isReadyState.filterNotNull()
     }
 }

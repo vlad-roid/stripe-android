@@ -72,6 +72,17 @@ open class ExpiryDateEditText @JvmOverloads constructor(
         SEPARATOR_WITHOUT_GAPS
     }
 
+    internal fun setText(expiryMonth: Int?, expiryYear: Int?) {
+        if (expiryMonth != null && expiryYear != null) {
+            setText(
+                listOf(
+                    expiryMonth.toString().padStart(2, '0'),
+                    expiryYear.toString().takeLast(2).padStart(2, '0')
+                ).joinToString(separator = separator)
+            )
+        }
+    }
+
     private fun updateSeparatorUi(
         includeSeparatorGaps: Boolean = INCLUDE_SEPARATOR_GAPS_DEFAULT
     ) {
@@ -89,7 +100,6 @@ open class ExpiryDateEditText @JvmOverloads constructor(
     private fun listenForTextChanges() {
         addTextChangedListener(
             object : StripeTextWatcher() {
-                private var ignoreChanges = false
                 private var latestChangeStart: Int = 0
                 private var latestInsertionSize: Int = 0
                 private var expirationDate = ExpirationDate.Unvalidated.EMPTY
@@ -97,19 +107,17 @@ open class ExpiryDateEditText @JvmOverloads constructor(
                 private var newCursorPosition: Int? = null
                 private var formattedDate: String? = null
 
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-                    if (ignoreChanges) {
-                        return
-                    }
+                override fun beforeTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int
+                ) {
                     latestChangeStart = start
                     latestInsertionSize = after
                 }
 
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    if (ignoreChanges) {
-                        return
-                    }
-
                     var inErrorState = false
 
                     val inputText = s?.toString().orEmpty()
@@ -170,19 +178,12 @@ open class ExpiryDateEditText @JvmOverloads constructor(
                 }
 
                 override fun afterTextChanged(s: Editable?) {
-                    if (ignoreChanges) {
-                        return
-                    }
-
-                    ignoreChanges = true
                     if (!isLastKeyDelete && formattedDate != null) {
-                        setText(formattedDate)
+                        setTextSilent(formattedDate)
                         newCursorPosition?.let {
                             setSelection(it.coerceIn(0, fieldText.length))
                         }
                     }
-
-                    ignoreChanges = false
 
                     // Note: we want to show an error state if the month is invalid or the
                     // final, complete date is in the past. We don't want to show an error state for
@@ -210,7 +211,20 @@ open class ExpiryDateEditText @JvmOverloads constructor(
                         isDateValid = false
                     }
 
-                    this@ExpiryDateEditText.shouldShowError = shouldShowError
+                    setErrorMessage(
+                        resources.getString(
+                            if (expirationDate.isPartialEntry) {
+                                R.string.incomplete_expiry_date
+                            } else if (!expirationDate.isMonthValid) {
+                                R.string.invalid_expiry_month
+                            } else {
+                                R.string.invalid_expiry_year
+                            }
+                        )
+                    )
+
+                    this@ExpiryDateEditText.shouldShowError =
+                        shouldShowError && (expirationDate.isPartialEntry || expirationDate.isComplete)
 
                     formattedDate = null
                     newCursorPosition = null
@@ -223,12 +237,19 @@ open class ExpiryDateEditText @JvmOverloads constructor(
         inputType = InputType.TYPE_CLASS_NUMBER
         updateSeparatorUi()
 
-        setErrorMessage(resources.getString(R.string.invalid_expiry_year))
         listenForTextChanges()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             setAutofillHints(View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_DATE)
         }
+
+        internalFocusChangeListeners.add { _, hasFocus ->
+            if (!hasFocus && !text.isNullOrEmpty() && !isDateValid) {
+                shouldShowError = true
+            }
+        }
+
+        layoutDirection = LAYOUT_DIRECTION_LTR
     }
 
     /**

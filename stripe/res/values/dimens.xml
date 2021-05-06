@@ -59,27 +59,39 @@
     <dimen name="stripe_paymentsheet_outer_spacing_horizontal">20dp</dimen>
     <dimen name="stripe_paymentsheet_button_container_spacing">10dp</dimen>
     <dimen name="stripe_paymentsheet_button_container_spacing_bottom">34dp</dimen>
-    <dimen name="stripe_paymentsheet_buybutton_corner_radius">6dp</dimen>
-    <dimen name="stripe_paymentsheet_buybutton_icon_size">20dp</dimen>
-    <dimen name="stripe_paymentsheet_buybutton_check_padding">5dp</dimen>
-    <dimen name="stripe_paymentsheet_buybutton_icon_padding">8dp</dimen>
-    <dimen name="stripe_paymentsheet_primarybutton_height">48sp</dimen>
-    <dimen name="stripe_paymentsheet_primarybutton_margin">3dp</dimen>
+    <dimen name="stripe_paymentsheet_primary_button_corner_radius">6dp</dimen>
+    <dimen name="stripe_paymentsheet_primary_button_icon_size">20dp</dimen>
+    <dimen name="stripe_paymentsheet_primary_button_check_padding">5dp</dimen>
+    <dimen name="stripe_paymentsheet_primary_button_icon_padding">8dp</dimen>
+    <dimen name="stripe_paymentsheet_primary_button_height">48sp</dimen>
+    <dimen name="stripe_paymentsheet_primary_button_margin">3dp</dimen>
     <dimen name="stripe_paymentsheet_card_elevation">2dp</dimen>
     <dimen name="stripe_paymentsheet_paymentoption_card_height">25dp</dimen>
     <dimen name="stripe_paymentsheet_paymentoption_card_width">35dp</dimen>
     <dimen name="stripe_paymentsheet_paymentoptions_margin_top">10dp</dimen>
     <dimen name="stripe_paymentsheet_paymentoptions_margin_bottom">26dp</dimen>
     <dimen name="stripe_paymentsheet_form_textsize">14sp</dimen>
+    <dimen name="stripe_paymentsheet_error_textsize">13sp</dimen>
     <!-- Default app bar elevation from https://material.io/design/environment/elevation.html -->
     <dimen name="stripe_paymentsheet_toolbar_elevation">4dp</dimen>
     <dimen name="stripe_paymentsheet_toolbar_button_size">24dp</dimen>
     <dimen name="stripe_paymentsheet_cardwidget_margin_vertical">4dp</dimen>
     <dimen name="stripe_paymentsheet_cardwidget_margin_horizontal">12dp</dimen>
     <dimen name="stripe_paymentsheet_add_payment_method_form_stroke_width">0dp</dimen>
-    <!-- Avoid collisions with CTA button -->
-    <dimen name="stripe_paymentsheet_form_bottom_margin">84dp</dimen>
+    <dimen name="stripe_paymentsheet_card_stroke_width">1dp</dimen>
+    <dimen name="stripe_paymentsheet_card_stroke_width_selected">2dp</dimen>
 
     <dimen name="stripe_card_number_text_input_layout_progress_end_margin">14dp</dimen>
     <dimen name="stripe_card_number_text_input_layout_progress_top_margin">10dp</dimen>
+
+    <!--CardFormView-->
+    <dimen name="stripe_card_form_view_textsize">14sp</dimen>
+    <dimen name="stripe_card_form_view_text_input_layout_padding_vertical">4dp</dimen>
+    <dimen name="stripe_card_form_view_text_input_layout_padding_horizontal">12dp</dimen>
+    <dimen name="stripe_card_form_view_text_margin_vertical">4dp</dimen>
+    <dimen name="stripe_card_form_view_text_margin_horizontal">12dp</dimen>
+    <dimen name="stripe_card_form_view_error_text_margin_horizontal">17dp</dimen>
+    <dimen name="stripe_card_form_view_text_minheight">48dp</dimen>
+    <dimen name="stripe_card_form_view_card_elevation">1dp</dimen>
+    <dimen name="stripe_card_form_view_error_textsize">13sp</dimen>
 </resources>

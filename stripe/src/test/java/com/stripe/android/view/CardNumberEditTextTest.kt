@@ -1,9 +1,14 @@
 package com.stripe.android.view
 
+import android.text.TextWatcher
 import android.view.ViewGroup
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.times
+import com.nhaarman.mockitokotlin2.verify
 import com.stripe.android.ApiKeyFixtures
 import com.stripe.android.CardNumberFixtures
 import com.stripe.android.CardNumberFixtures.AMEX_BIN
@@ -31,9 +36,9 @@ import com.stripe.android.cards.StaticCardAccountRangeSource
 import com.stripe.android.cards.StaticCardAccountRanges
 import com.stripe.android.model.AccountRange
 import com.stripe.android.model.CardBrand
-import com.stripe.android.networking.AnalyticsDataFactory
 import com.stripe.android.networking.AnalyticsRequest
 import com.stripe.android.networking.AnalyticsRequestExecutor
+import com.stripe.android.networking.AnalyticsRequestFactory
 import com.stripe.android.testharness.ViewTestUtils
 import com.stripe.android.utils.TestUtils.idleLooper
 import kotlinx.coroutines.Dispatchers
@@ -78,16 +83,15 @@ internal class CardNumberEditTextTest {
     private val cardAccountRangeRepository = FakeCardAccountRangeRepository()
 
     private val analyticsRequestExecutor = AnalyticsRequestExecutor {}
-    private val analyticsRequestFactory = AnalyticsRequest.Factory()
-    private val analyticsDataFactory = AnalyticsDataFactory(context, ApiKeyFixtures.DEFAULT_PUBLISHABLE_KEY)
+    private val analyticsRequestFactory =
+        AnalyticsRequestFactory(context, ApiKeyFixtures.DEFAULT_PUBLISHABLE_KEY)
 
     private val cardNumberEditText = CardNumberEditText(
         context,
         workContext = testDispatcher,
         cardAccountRangeRepository = cardAccountRangeRepository,
         analyticsRequestExecutor = analyticsRequestExecutor,
-        analyticsRequestFactory = analyticsRequestFactory,
-        analyticsDataFactory = analyticsDataFactory
+        analyticsRequestFactory = analyticsRequestFactory
     ).also {
         it.completionCallback = completionCallback
         it.brandChangeCallback = brandChangeCallback
@@ -100,100 +104,107 @@ internal class CardNumberEditTextTest {
     }
 
     @Test
-    fun calculateCursorPosition_whenVisa_increasesIndexWhenGoingPastTheSpaces() = testDispatcher.runBlockingTest {
-        // Adding 1 character, starting at position 4, with a final string length 6
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(6, 4, 1)
-        ).isEqualTo(6)
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(8, 4, 1)
-        ).isEqualTo(6)
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(11, 9, 1)
-        ).isEqualTo(11)
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(16, 14, 1)
-        ).isEqualTo(16)
-    }
+    fun calculateCursorPosition_whenVisa_increasesIndexWhenGoingPastTheSpaces() =
+        testDispatcher.runBlockingTest {
+            // Adding 1 character, starting at position 4, with a final string length 6
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(6, 4, 1)
+            ).isEqualTo(6)
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(8, 4, 1)
+            ).isEqualTo(6)
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(11, 9, 1)
+            ).isEqualTo(11)
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(16, 14, 1)
+            ).isEqualTo(16)
+        }
 
     @Test
-    fun `calculateCursorPosition() when pasting 19 digit number should return expected value`() = testDispatcher.runBlockingTest {
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(
-                newFormattedLength = 23,
-                start = 0,
-                addedDigits = 19,
-                panLength = 19
+    fun `calculateCursorPosition() when pasting 19 digit number should return expected value`() =
+        testDispatcher.runBlockingTest {
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(
+                    newFormattedLength = 23,
+                    start = 0,
+                    addedDigits = 19,
+                    panLength = 19
+                )
+            ).isEqualTo(23)
+        }
+
+    @Test
+    fun calculateCursorPosition_whenAmEx_increasesIndexWhenGoingPastTheSpaces() =
+        testDispatcher.runBlockingTest {
+            cardNumberEditText.onAccountRangeResult(
+                AccountRangeFixtures.AMERICANEXPRESS
             )
-        ).isEqualTo(23)
-    }
+
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(6, 4, 1)
+            ).isEqualTo(6)
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(13, 11, 1)
+            ).isEqualTo(13)
+        }
 
     @Test
-    fun calculateCursorPosition_whenAmEx_increasesIndexWhenGoingPastTheSpaces() = testDispatcher.runBlockingTest {
-        cardNumberEditText.onAccountRangeResult(
-            AccountRangeFixtures.AMERICANEXPRESS
-        )
+    fun calculateCursorPosition_whenDinersClub16_decreasesIndexWhenDeletingPastTheSpaces() =
+        testDispatcher.runBlockingTest {
+            cardNumberEditText.onAccountRangeResult(
+                AccountRangeFixtures.DINERSCLUB16
+            )
 
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(6, 4, 1)
-        ).isEqualTo(6)
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(13, 11, 1)
-        ).isEqualTo(13)
-    }
-
-    @Test
-    fun calculateCursorPosition_whenDinersClub16_decreasesIndexWhenDeletingPastTheSpaces() = testDispatcher.runBlockingTest {
-        cardNumberEditText.onAccountRangeResult(
-            AccountRangeFixtures.DINERSCLUB16
-        )
-
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(6, 5, 0)
-        ).isEqualTo(4)
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(13, 10, 0)
-        ).isEqualTo(9)
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(17, 15, 0)
-        ).isEqualTo(14)
-    }
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(6, 5, 0)
+            ).isEqualTo(4)
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(13, 10, 0)
+            ).isEqualTo(9)
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(17, 15, 0)
+            ).isEqualTo(14)
+        }
 
     @Test
-    fun calculateCursorPosition_whenDeletingNotOnGaps_doesNotDecreaseIndex() = testDispatcher.runBlockingTest {
-        cardNumberEditText.onAccountRangeResult(
-            AccountRangeFixtures.DINERSCLUB14
-        )
+    fun calculateCursorPosition_whenDeletingNotOnGaps_doesNotDecreaseIndex() =
+        testDispatcher.runBlockingTest {
+            cardNumberEditText.onAccountRangeResult(
+                AccountRangeFixtures.DINERSCLUB14
+            )
 
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(12, 7, 0)
-        ).isEqualTo(7)
-    }
-
-    @Test
-    fun calculateCursorPosition_whenAmEx_decreasesIndexWhenDeletingPastTheSpaces() = testDispatcher.runBlockingTest {
-        cardNumberEditText.onAccountRangeResult(
-            AccountRangeFixtures.AMERICANEXPRESS
-        )
-
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(10, 5, 0)
-        ).isEqualTo(4)
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(13, 12, 0)
-        ).isEqualTo(11)
-    }
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(12, 7, 0)
+            ).isEqualTo(7)
+        }
 
     @Test
-    fun calculateCursorPosition_whenSelectionInTheMiddle_increasesIndexOverASpace() = testDispatcher.runBlockingTest {
-        cardNumberEditText.onAccountRangeResult(
-            AccountRangeFixtures.VISA
-        )
+    fun calculateCursorPosition_whenAmEx_decreasesIndexWhenDeletingPastTheSpaces() =
+        testDispatcher.runBlockingTest {
+            cardNumberEditText.onAccountRangeResult(
+                AccountRangeFixtures.AMERICANEXPRESS
+            )
 
-        assertThat(
-            cardNumberEditText.calculateCursorPosition(10, 4, 1)
-        ).isEqualTo(6)
-    }
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(10, 5, 0)
+            ).isEqualTo(4)
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(13, 12, 0)
+            ).isEqualTo(11)
+        }
+
+    @Test
+    fun calculateCursorPosition_whenSelectionInTheMiddle_increasesIndexOverASpace() =
+        testDispatcher.runBlockingTest {
+            cardNumberEditText.onAccountRangeResult(
+                AccountRangeFixtures.VISA
+            )
+
+            assertThat(
+                cardNumberEditText.calculateCursorPosition(10, 4, 1)
+            ).isEqualTo(6)
+        }
 
     @Test
     fun calculateCursorPosition_whenPastingIntoAGap_includesTheGapJump() {
@@ -249,8 +260,7 @@ internal class CardNumberEditTextTest {
             workContext = testDispatcher,
             cardAccountRangeRepository = NullCardAccountRangeRepository(),
             analyticsRequestExecutor = analyticsRequestExecutor,
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory
+            analyticsRequestFactory = analyticsRequestFactory
         )
 
         var callbacks = 0
@@ -274,15 +284,14 @@ internal class CardNumberEditTextTest {
             staticCardAccountRanges = object : StaticCardAccountRanges {
                 override fun first(
                     cardNumber: CardNumber.Unvalidated
-                ): AccountRange? = AccountRangeFixtures.UNIONPAY19
+                ): AccountRange = AccountRangeFixtures.UNIONPAY19
 
                 override fun filter(
                     cardNumber: CardNumber.Unvalidated
-                ): List<AccountRange> = listOf(AccountRangeFixtures.UNIONPAY19)
+                ) = listOf(AccountRangeFixtures.UNIONPAY19)
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory
+            analyticsRequestFactory = analyticsRequestFactory
         )
 
         var callbacks = 0
@@ -310,11 +319,10 @@ internal class CardNumberEditTextTest {
 
                 override fun filter(
                     cardNumber: CardNumber.Unvalidated
-                ): List<AccountRange> = emptyList()
+                ) = emptyList<AccountRange>()
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory
+            analyticsRequestFactory = analyticsRequestFactory
         )
 
         cardNumberEditText.setText("6216828050000000000")
@@ -331,8 +339,7 @@ internal class CardNumberEditTextTest {
             workContext = testDispatcher,
             cardAccountRangeRepository = NullCardAccountRangeRepository(),
             analyticsRequestExecutor = analyticsRequestExecutor,
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory
+            analyticsRequestFactory = analyticsRequestFactory
         )
 
         cardNumberEditText.setText(UNIONPAY_NO_SPACES)
@@ -405,7 +412,7 @@ internal class CardNumberEditTextTest {
         assertThat(cardNumberEditText.shouldShowError)
             .isFalse()
 
-        updateCardNumberAndIdle("123")
+        updateCardNumberAndIdle("424")
         assertThat(cardNumberEditText.shouldShowError)
             .isFalse()
     }
@@ -690,8 +697,7 @@ internal class CardNumberEditTextTest {
                         workContext = testDispatcher,
                         cardAccountRangeRepository = DelayedCardAccountRangeRepository(),
                         analyticsRequestExecutor = analyticsRequestExecutor,
-                        analyticsRequestFactory = analyticsRequestFactory,
-                        analyticsDataFactory = analyticsDataFactory
+                        analyticsRequestFactory = analyticsRequestFactory
                     )
 
                     val root = activity.findViewById<ViewGroup>(R.id.add_payment_method_card).also {
@@ -727,8 +733,7 @@ internal class CardNumberEditTextTest {
                 override val loading: Flow<Boolean> = flowOf(false)
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory
+            analyticsRequestFactory = analyticsRequestFactory
         )
 
         cardNumberEditText.setText(VISA_BIN)
@@ -743,6 +748,32 @@ internal class CardNumberEditTextTest {
         updateCardNumberAndIdle("4")
         assertThat(lastBrandChangeCallbackInvocation)
             .isEqualTo(CardBrand.Visa)
+        assertThat(cardNumberEditText.isCardNumberValid)
+            .isFalse()
+        assertThat(cardNumberEditText.shouldShowError)
+            .isFalse()
+    }
+
+    @Test
+    fun `when first digit matches multiple accounts, don't show an error`() {
+        // matches Amex and diners
+        updateCardNumberAndIdle("3")
+        assertThat(lastBrandChangeCallbackInvocation)
+            .isEqualTo(CardBrand.Unknown)
+        assertThat(cardNumberEditText.isCardNumberValid)
+            .isFalse()
+        assertThat(cardNumberEditText.shouldShowError)
+            .isFalse()
+    }
+
+    @Test
+    fun `when first digit doesn't match a single account, show error`() {
+        // matches Visa
+        updateCardNumberAndIdle("0")
+        assertThat(cardNumberEditText.isCardNumberValid)
+            .isFalse()
+        assertThat(cardNumberEditText.shouldShowError)
+            .isTrue()
     }
 
     @Test
@@ -751,6 +782,35 @@ internal class CardNumberEditTextTest {
         updateCardNumberAndIdle("6")
         assertThat(lastBrandChangeCallbackInvocation)
             .isEqualTo(CardBrand.Unknown)
+    }
+
+    @Test
+    fun `when lose focus and card is not complete, show error`() {
+        updateCardNumberAndIdle("3")
+        cardNumberEditText.internalFocusChangeListeners
+            .forEach {
+                it.onFocusChange(cardNumberEditText, false)
+            }
+        assertThat(cardNumberEditText.isCardNumberValid)
+            .isFalse()
+        assertThat(cardNumberEditText.shouldShowError)
+            .isTrue()
+    }
+
+    @Test
+    fun `when delete the card number completely, don't show an error`() {
+        updateCardNumberAndIdle("7")
+        assertThat(cardNumberEditText.shouldShowError)
+            .isTrue()
+        updateCardNumberAndIdle("")
+        cardNumberEditText.internalFocusChangeListeners
+            .forEach {
+                it.onFocusChange(cardNumberEditText, false)
+            }
+        assertThat(cardNumberEditText.isCardNumberValid)
+            .isFalse()
+        assertThat(cardNumberEditText.shouldShowError)
+            .isFalse()
     }
 
     @Test
@@ -770,8 +830,7 @@ internal class CardNumberEditTextTest {
                 override val loading: Flow<Boolean> = flowOf(false)
             },
             analyticsRequestExecutor = analyticsRequestExecutor,
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory
+            analyticsRequestFactory = analyticsRequestFactory
         )
 
         // 620000 - valid BIN, call repo
@@ -831,8 +890,7 @@ internal class CardNumberEditTextTest {
             analyticsRequestExecutor = {
                 analyticsRequests.add(it)
             },
-            analyticsRequestFactory = analyticsRequestFactory,
-            analyticsDataFactory = analyticsDataFactory
+            analyticsRequestFactory = analyticsRequestFactory
         )
         cardNumberEditText.setText(UNIONPAY_NO_SPACES)
         idleLooper()
@@ -840,6 +898,17 @@ internal class CardNumberEditTextTest {
             .hasSize(1)
         assertThat(analyticsRequests.first().params["event"])
             .isEqualTo("stripe_android.card_metadata_loaded_too_slow")
+    }
+
+    @Test
+    fun verifyAdditionalTextChangeListenerGetTriggeredOnlyOnce() {
+        val textChangeListener = mock<TextWatcher>()
+        cardNumberEditText.addTextChangedListener(textChangeListener)
+        cardNumberEditText.setText("1")
+
+        idleLooper()
+
+        verify(textChangeListener, times(1)).afterTextChanged(any())
     }
 
     private fun verifyCardBrandBin(

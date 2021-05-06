@@ -13,7 +13,6 @@ import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.verifyNoMoreInteractions
 import com.nhaarman.mockitokotlin2.whenever
-import com.stripe.android.AnalyticsEvent
 import com.stripe.android.ApiKeyFixtures
 import com.stripe.android.FileFactory
 import com.stripe.android.FingerprintDataFixtures
@@ -84,15 +83,6 @@ internal class StripeApiRepositoryTest {
         whenever(fingerprintDataRepository.get()).thenReturn(
             FingerprintDataFixtures.create(Calendar.getInstance().timeInMillis)
         )
-
-        whenever(stripeApiRequestExecutor.execute(any<FileUploadRequest>()))
-            .thenReturn(
-                StripeResponse(
-                    200,
-                    StripeFileFixtures.DEFAULT.toString(),
-                    emptyMap()
-                )
-            )
     }
 
     @AfterTest
@@ -357,7 +347,7 @@ internal class StripeApiRepositoryTest {
         // This is the one and only test where we actually log something, because
         // we are testing whether or not we log.
         stripeApiRepository.fireAnalyticsRequest(
-            emptyMap()
+            AnalyticsRequest(emptyMap<String, String>())
         )
     }
 
@@ -467,7 +457,9 @@ internal class StripeApiRepositoryTest {
             context,
             DEFAULT_OPTIONS.apiKey,
             workContext = testDispatcher,
-            stripeApiRequestExecutor = ApiRequestExecutor.Default(),
+            stripeApiRequestExecutor = DefaultApiRequestExecutor(
+                workContext = testDispatcher
+            ),
             analyticsRequestExecutor = analyticsRequestExecutor,
             fingerprintDataRepository = fingerprintDataRepository
         )
@@ -484,7 +476,7 @@ internal class StripeApiRepositoryTest {
     fun fireAnalyticsRequest_whenShouldLogRequestIsFalse_doesNotCreateAConnection() {
         val stripeApiRepository = create()
         stripeApiRepository.fireAnalyticsRequest(
-            emptyMap()
+            AnalyticsRequest(emptyMap<String, String>())
         )
         verifyNoMoreInteractions(stripeApiRequestExecutor)
     }
@@ -783,6 +775,15 @@ internal class StripeApiRepositoryTest {
 
     @Test
     fun createFile_shouldFireExpectedRequests() = testDispatcher.runBlockingTest {
+        whenever(stripeApiRequestExecutor.execute(any<FileUploadRequest>()))
+            .thenReturn(
+                StripeResponse(
+                    200,
+                    StripeFileFixtures.DEFAULT.toString(),
+                    emptyMap()
+                )
+            )
+
         val stripeRepository = create()
 
         stripeRepository.createFile(

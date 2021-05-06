@@ -1,7 +1,6 @@
 package com.stripe.android.view
 
 import android.content.Context
-import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -9,9 +8,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import com.stripe.android.ApiKeyFixtures
 import com.stripe.android.PaymentConfiguration
+import com.stripe.android.utils.TestUtils.idleLooper
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows
 import org.robolectric.annotation.LooperMode
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -36,7 +35,7 @@ class ViewWidthAnimatorTest {
     }
 
     @Test
-    fun animate_shouldSetViewWidthToEndWidth() {
+    fun `animate() should invoke callback at end`() {
         var isAnimationCompleted = false
         ViewWidthAnimator(view, 500L)
             .animate(START_WIDTH, END_WIDTH) {
@@ -44,12 +43,10 @@ class ViewWidthAnimatorTest {
             }
 
         // complete pending animations
-        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        idleLooper()
 
         assertThat(isAnimationCompleted)
             .isTrue()
-        assertThat(view.width)
-            .isEqualTo(END_WIDTH)
     }
 
     private companion object {

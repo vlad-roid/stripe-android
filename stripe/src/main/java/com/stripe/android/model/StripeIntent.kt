@@ -50,6 +50,11 @@ interface StripeIntent : StripeModel {
 
     val nextActionData: NextActionData?
 
+    /**
+     * Whether confirmation has succeeded and all required actions have been handled.
+     */
+    val isConfirmed: Boolean
+
     fun requiresAction(): Boolean
 
     fun requiresConfirmation(): Boolean
@@ -60,8 +65,10 @@ interface StripeIntent : StripeModel {
     enum class NextActionType(val code: String) {
         RedirectToUrl("redirect_to_url"),
         UseStripeSdk("use_stripe_sdk"),
-        DisplayOxxoDetails("display_oxxo_details"),
-        AlipayRedirect("alipay_handle_redirect");
+        DisplayOxxoDetails("oxxo_display_details"),
+        AlipayRedirect("alipay_handle_redirect"),
+        BlikAuthorize("blik_authorize"),
+        WeChatPayRedirect("wechat_pay_redirect_to_android_app");
 
         override fun toString(): String {
             return code
@@ -131,6 +138,7 @@ interface StripeIntent : StripeModel {
     }
 
     sealed class NextActionData : StripeModel {
+
         @Parcelize
         data class DisplayOxxoDetails(
             /**
@@ -220,5 +228,18 @@ interface StripeIntent : StripeModel {
                 ) : Parcelable
             }
         }
+
+        @Parcelize
+        object BlikAuthorize : NextActionData() {
+            override fun hashCode(): Int {
+                return 0
+            }
+            override fun equals(other: Any?): Boolean {
+                return this === other
+            }
+        }
+
+        @Parcelize
+        internal data class WeChatPayRedirect(val weChat: WeChat) : NextActionData()
     }
 }

@@ -39,4 +39,36 @@ sealed class PaymentMethodOptionsParams(
             private const val PARAM_NETWORK = "network"
         }
     }
+
+    @Parcelize
+    data class Blik(
+        var code: String,
+    ) : PaymentMethodOptionsParams(PaymentMethod.Type.Blik) {
+        override fun createTypeParams(): List<Pair<String, Any?>> {
+            return listOf(
+                PARAM_CODE to code,
+            )
+        }
+
+        internal companion object {
+            const val PARAM_CODE = "code"
+        }
+    }
+
+    @Parcelize
+    data class WeChatPay(
+        var appId: String,
+    ) : PaymentMethodOptionsParams(PaymentMethod.Type.WeChatPay) {
+        override fun createTypeParams(): List<Pair<String, Any?>> {
+            return listOf(
+                PARAM_CLIENT to "android",
+                PARAM_APP_ID to appId
+            )
+        }
+
+        internal companion object {
+            const val PARAM_CLIENT = "client"
+            const val PARAM_APP_ID = "app_id"
+        }
+    }
 }

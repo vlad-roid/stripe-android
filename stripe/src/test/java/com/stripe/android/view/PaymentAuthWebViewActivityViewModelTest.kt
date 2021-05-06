@@ -1,80 +1,87 @@
 package com.stripe.android.view
 
+import android.content.ActivityNotFoundException
+import android.net.Uri
+import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
-import com.stripe.android.PaymentAuthWebViewStarter
-import com.stripe.android.PaymentController
+import com.stripe.android.ApiKeyFixtures
 import com.stripe.android.StripeIntentResult
+import com.stripe.android.auth.PaymentBrowserAuthContract
+import com.stripe.android.networking.AnalyticsRequest
+import com.stripe.android.networking.AnalyticsRequestExecutor
+import com.stripe.android.networking.AnalyticsRequestFactory
+import com.stripe.android.payments.PaymentFlowResult
 import com.stripe.android.stripe3ds2.init.ui.StripeToolbarCustomization
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 @RunWith(RobolectricTestRunner::class)
 class PaymentAuthWebViewActivityViewModelTest {
+    private val analyticsRequests = mutableListOf<AnalyticsRequest>()
+    private val analyticsRequestExecutor = AnalyticsRequestExecutor { analyticsRequests.add(it) }
+    private val analyticsRequestFactory = AnalyticsRequestFactory(
+        ApplicationProvider.getApplicationContext(),
+        ApiKeyFixtures.FAKE_PUBLISHABLE_KEY
+    )
+
     @Test
     fun cancellationResult() {
-        val viewModel = PaymentAuthWebViewActivityViewModel(
-            PaymentAuthWebViewStarter.Args(
-                clientSecret = "client_secret",
-                url = "https://example.com",
+        val viewModel = createViewModel(
+            ARGS.copy(
                 shouldCancelSource = true
             )
         )
 
         val intent = viewModel.cancellationResult
-        val resultIntent = PaymentController.Result.fromIntent(requireNotNull(intent))
-        assertThat(
-            resultIntent?.flowOutcome
-        ).isEqualTo(StripeIntentResult.Outcome.CANCELED)
-        assertThat(resultIntent?.shouldCancelSource).isTrue()
+        val resultIntent = PaymentFlowResult.Unvalidated.fromIntent(intent)
+        assertThat(resultIntent.flowOutcome)
+            .isEqualTo(StripeIntentResult.Outcome.CANCELED)
+        assertThat(resultIntent.canCancelSource)
+            .isTrue()
     }
 
     @Test
     fun `cancellationResult should set correct outcome when user nav is allowed`() {
-        val viewModel = PaymentAuthWebViewActivityViewModel(
-            PaymentAuthWebViewStarter.Args(
-                clientSecret = "client_secret",
-                url = "https://example.com",
+        val viewModel = createViewModel(
+            ARGS.copy(
                 shouldCancelSource = true,
                 shouldCancelIntentOnUserNavigation = false
             )
         )
 
         val intent = viewModel.cancellationResult
-        val resultIntent = PaymentController.Result.fromIntent(requireNotNull(intent))
-        assertThat(
-            resultIntent?.flowOutcome
-        ).isEqualTo(StripeIntentResult.Outcome.SUCCEEDED)
-        assertThat(resultIntent?.shouldCancelSource).isTrue()
+        val resultIntent = PaymentFlowResult.Unvalidated.fromIntent(intent)
+        assertThat(resultIntent.flowOutcome)
+            .isEqualTo(StripeIntentResult.Outcome.SUCCEEDED)
+        assertThat(resultIntent.canCancelSource)
+            .isTrue()
     }
 
     @Test
     fun toolbarBackgroundColor_returnsCorrectValue() {
-        val viewModel = PaymentAuthWebViewActivityViewModel(
-            PaymentAuthWebViewStarter.Args(
-                clientSecret = "client_secret",
-                url = "https://example.com",
+        val viewModel = createViewModel(
+            ARGS.copy(
                 toolbarCustomization = StripeToolbarCustomization().apply {
                     setBackgroundColor("#ffffff")
                 }
             )
         )
-        assertEquals("#ffffff", viewModel.toolbarBackgroundColor)
+        assertThat(viewModel.toolbarBackgroundColor)
+            .isEqualTo("#ffffff")
     }
 
     @Test
     fun buttonText_returnsCorrectValue() {
-        val viewModel = PaymentAuthWebViewActivityViewModel(
-            PaymentAuthWebViewStarter.Args(
-                clientSecret = "client_secret",
-                url = "https://example.com",
+        val viewModel = createViewModel(
+            ARGS.copy(
                 toolbarCustomization = StripeToolbarCustomization().apply {
                     setButtonText("close")
                 }
             )
         )
-        assertEquals("close", viewModel.buttonText)
+        assertThat(viewModel.buttonText)
+            .isEqualTo("close")
     }
 
     @Test
@@ -82,19 +89,87 @@ class PaymentAuthWebViewActivityViewModelTest {
         val toolbarCustomization = StripeToolbarCustomization().apply {
             setHeaderText("auth webview")
         }
-        val viewModel = PaymentAuthWebViewActivityViewModel(
-            PaymentAuthWebViewStarter.Args(
-                clientSecret = "client_secret",
-                url = "https://example.com",
+        val viewModel = createViewModel(
+            ARGS.copy(
                 toolbarCustomization = toolbarCustomization
             )
         )
-        assertEquals(
+        assertThat(
+            viewModel.toolbarTitle
+        ).isEqualTo(
             PaymentAuthWebViewActivityViewModel.ToolbarTitleData(
                 "auth webview",
                 toolbarCustomization
-            ),
-            viewModel.toolbarTitle
+            )
+        )
+    }
+
+    @Test
+    fun `logError() should fire expected event`() {
+        val viewModel = createViewModel(ARGS)
+
+        viewModel.logError(
+            Uri.parse("https://example.com/path?secret=password"),
+            ActivityNotFoundException("Failed to find activity")
+        )
+
+        val params = analyticsRequests.first().params
+        assertThat(params["event"])
+            .isEqualTo("stripe_android.3ds1_challenge_error")
+        assertThat(params["error_message"])
+            .isEqualTo("Failed to find activity")
+        assertThat(params["error_stacktrace"].toString())
+            .startsWith("android.content.ActivityNotFoundException: Failed to find activity\n")
+        assertThat(params["challenge_uri"])
+            .isEqualTo("https://example.com")
+    }
+
+    @Test
+    fun `logComplete() should fire expected event`() {
+        val viewModel = createViewModel(ARGS)
+
+        viewModel.logComplete(
+            Uri.parse("https://example.com/path?secret=password")
+        )
+
+        val params = analyticsRequests.first().params
+        assertThat(params["event"])
+            .isEqualTo("stripe_android.3ds1_challenge_complete")
+        assertThat(params["challenge_uri"])
+            .isEqualTo("https://example.com")
+    }
+
+    @Test
+    fun `logComplete() with uri=null should fire expected event`() {
+        val viewModel = createViewModel(ARGS)
+
+        viewModel.logComplete(
+            uri = null
+        )
+
+        val params = analyticsRequests.first().params
+        assertThat(params["event"])
+            .isEqualTo("stripe_android.3ds1_challenge_complete")
+        assertThat(params["challenge_uri"])
+            .isEqualTo("")
+    }
+
+    private fun createViewModel(
+        args: PaymentBrowserAuthContract.Args
+    ): PaymentAuthWebViewActivityViewModel {
+        return PaymentAuthWebViewActivityViewModel(
+            args,
+            analyticsRequestExecutor,
+            analyticsRequestFactory
+        )
+    }
+
+    private companion object {
+        val ARGS = PaymentBrowserAuthContract.Args(
+            objectId = "pi_1EceMnCRMbs6FrXfCXdF8dnx",
+            requestCode = 100,
+            clientSecret = "client_secret",
+            url = "https://example.com"
         )
     }
 }

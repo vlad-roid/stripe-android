@@ -1,12 +1,12 @@
 package com.stripe.android.model
 
 import android.os.Parcelable
+import com.stripe.android.CardUtils
 import com.stripe.android.ObjectBuilder
 import com.stripe.android.Stripe
 import kotlinx.parcelize.Parcelize
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.Locale
 
 /**
  * Model for PaymentMethod creation parameters.
@@ -21,7 +21,7 @@ import java.util.Locale
 data class PaymentMethodCreateParams internal constructor(
     internal val type: Type,
 
-    private val card: Card? = null,
+    internal val card: Card? = null,
     private val ideal: Ideal? = null,
     private val fpx: Fpx? = null,
     private val sepaDebit: SepaDebit? = null,
@@ -180,37 +180,45 @@ data class PaymentMethodCreateParams internal constructor(
             }.orEmpty()
         }
 
-    internal enum class Type(internal val code: String, val hasMandate: Boolean = false) {
+    internal enum class Type(
+        internal val code: String,
+        val hasMandate: Boolean = false
+    ) {
         Card("card"),
-        Ideal("ideal"),
+        Ideal("ideal", hasMandate = true),
         Fpx("fpx"),
-        SepaDebit("sepa_debit", true),
-        AuBecsDebit("au_becs_debit", true),
-        BacsDebit("bacs_debit", true),
-        Sofort("sofort"),
+        SepaDebit("sepa_debit", hasMandate = true),
+        AuBecsDebit("au_becs_debit", hasMandate = true),
+        BacsDebit("bacs_debit", hasMandate = true),
+        Sofort("sofort", hasMandate = true),
         P24("p24"),
-        Bancontact("bancontact"),
+        Bancontact("bancontact", hasMandate = true),
         Giropay("giropay"),
-        Eps("eps"),
+        Eps("eps", hasMandate = true),
         Oxxo("oxxo"),
         Alipay("alipay"),
         GrabPay("grabpay"),
         PayPal("paypal"),
         AfterpayClearpay("afterpay_clearpay"),
         Upi("upi"),
-        Netbanking("netbanking")
+        Netbanking("netbanking"),
+        Blik("blik"),
+        WeChatPay("wechat_pay")
     }
 
     @Parcelize
     data class Card internal constructor(
-        private val number: String? = null,
-        private val expiryMonth: Int? = null,
-        private val expiryYear: Int? = null,
-        private val cvc: String? = null,
+        internal val number: String? = null,
+        internal val expiryMonth: Int? = null,
+        internal val expiryYear: Int? = null,
+        internal val cvc: String? = null,
         private val token: String? = null,
 
         internal val attribution: Set<String>? = null
     ) : StripeParamsModel, Parcelable {
+        internal val brand: CardBrand get() = CardUtils.getPossibleCardBrand(number)
+        internal val last4: String? get() = number?.takeLast(4)
+
         override fun toParamMap(): Map<String, Any> {
             return listOf(
                 PARAM_NUMBER to number,
@@ -430,7 +438,7 @@ data class PaymentMethodCreateParams internal constructor(
     ) : StripeParamsModel, Parcelable {
         override fun toParamMap(): Map<String, Any> {
             return mapOf(
-                PARAM_COUNTRY to country.toUpperCase(Locale.ROOT)
+                PARAM_COUNTRY to country.uppercase()
             )
         }
 
@@ -445,7 +453,7 @@ data class PaymentMethodCreateParams internal constructor(
     ) : StripeParamsModel, Parcelable {
         override fun toParamMap(): Map<String, Any> {
             return mapOf(
-                PARAM_BANK to bank.toLowerCase(Locale.ROOT)
+                PARAM_BANK to bank.lowercase()
             )
         }
 
@@ -711,9 +719,9 @@ data class PaymentMethodCreateParams internal constructor(
             )
         }
 
-        @JvmSynthetic
+        @JvmStatic
         @JvmOverloads
-        internal fun createAfterpayClearpay(
+        fun createAfterpayClearpay(
             billingDetails: PaymentMethod.BillingDetails? = null,
             metadata: Map<String, String>? = null
         ): PaymentMethodCreateParams {
@@ -746,6 +754,32 @@ data class PaymentMethodCreateParams internal constructor(
                     email = googlePayResult.email,
                     phone = googlePayResult.phoneNumber
                 )
+            )
+        }
+
+        @JvmStatic
+        @JvmOverloads
+        fun createBlik(
+            billingDetails: PaymentMethod.BillingDetails? = null,
+            metadata: Map<String, String>? = null
+        ): PaymentMethodCreateParams {
+            return PaymentMethodCreateParams(
+                type = Type.Blik,
+                billingDetails = billingDetails,
+                metadata = metadata
+            )
+        }
+
+        @JvmStatic
+        @JvmOverloads
+        fun createWeChatPay(
+            billingDetails: PaymentMethod.BillingDetails? = null,
+            metadata: Map<String, String>? = null
+        ): PaymentMethodCreateParams {
+            return PaymentMethodCreateParams(
+                type = Type.WeChatPay,
+                billingDetails = billingDetails,
+                metadata = metadata
             )
         }
     }

@@ -6,7 +6,10 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import com.stripe.android.R
 import com.stripe.android.model.PaymentMethodFixtures
+import com.stripe.android.paymentsheet.model.FragmentConfig
+import com.stripe.android.paymentsheet.model.FragmentConfigFixtures
 import com.stripe.android.paymentsheet.model.PaymentSelection
+import com.stripe.android.paymentsheet.model.SavedSelection
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
@@ -23,39 +26,59 @@ class PaymentOptionsAdapterTest {
 
     @Test
     fun `item count when Google Pay is enabled should return expected value`() {
-        val adapter = createConfiguredAdapter(shouldShowGooglePay = true)
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = true
+            )
+        )
         assertThat(adapter.itemCount)
             .isEqualTo(8)
     }
 
     @Test
     fun `item count when Google Pay is disabled should return expected value`() {
-        val adapter = createConfiguredAdapter(shouldShowGooglePay = false)
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = false
+            )
+        )
         assertThat(adapter.itemCount)
             .isEqualTo(7)
     }
 
     @Test
     fun `getItemId() when Google Pay is enabled should return expected value`() {
-        val adapter = createConfiguredAdapter(shouldShowGooglePay = true)
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = true
+            )
+        )
         assertThat(adapter.getItemId(0))
-            .isEqualTo(PaymentOptionsAdapter.ADD_NEW_ID)
+            .isEqualTo(PaymentOptionsAdapter.Item.AddCard.hashCode().toLong())
         assertThat(adapter.getItemId(1))
-            .isEqualTo(PaymentOptionsAdapter.GOOGLE_PAY_ID)
+            .isEqualTo(PaymentOptionsAdapter.Item.GooglePay.hashCode().toLong())
     }
 
     @Test
     fun `getItemId() when Google Pay is disabled should return expected value`() {
-        val adapter = createConfiguredAdapter(shouldShowGooglePay = false)
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = false
+            )
+        )
         assertThat(adapter.getItemId(0))
-            .isEqualTo(PaymentOptionsAdapter.ADD_NEW_ID)
+            .isEqualTo(PaymentOptionsAdapter.Item.AddCard.hashCode().toLong())
         assertThat(adapter.getItemId(1))
-            .isNotEqualTo(PaymentOptionsAdapter.GOOGLE_PAY_ID)
+            .isNotEqualTo(PaymentOptionsAdapter.Item.GooglePay.hashCode().toLong())
     }
 
     @Test
     fun `getItemViewType() when Google Pay is enabled should return expected value`() {
-        val adapter = createConfiguredAdapter(shouldShowGooglePay = true)
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = true
+            )
+        )
         assertThat(adapter.getItemViewType(0))
             .isEqualTo(PaymentOptionsAdapter.ViewType.AddCard.ordinal)
         assertThat(adapter.getItemViewType(1))
@@ -66,7 +89,11 @@ class PaymentOptionsAdapterTest {
 
     @Test
     fun `getItemViewType() when Google Pay is disabled should return expected value`() {
-        val adapter = createConfiguredAdapter(shouldShowGooglePay = false)
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = false
+            )
+        )
         assertThat(adapter.getItemViewType(0))
             .isEqualTo(PaymentOptionsAdapter.ViewType.AddCard.ordinal)
         assertThat(adapter.getItemViewType(1))
@@ -77,80 +104,163 @@ class PaymentOptionsAdapterTest {
 
     @Test
     fun `click on Google Pay view should update payment selection`() {
-        val adapter = createConfiguredAdapter(shouldShowGooglePay = true)
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = true,
+                savedSelection = SavedSelection.PaymentMethod(CONFIG.paymentMethods[1].id!!)
+            )
+        )
+
+        adapter.onItemSelected(1, true)
+
+        assertThat(paymentSelections.last())
+            .isEqualTo(PaymentSelection.GooglePay)
+    }
+
+    @Test
+    fun `when adapter is disabled all items should be disabled`() {
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = true,
+                savedSelection = SavedSelection.PaymentMethod(CONFIG.paymentMethods[1].id!!)
+            )
+        )
+        adapter.isEnabled = false
+
         val googlePayViewHolder = adapter.onCreateViewHolder(
             FrameLayout(context),
             adapter.getItemViewType(1)
         )
         adapter.onBindViewHolder(googlePayViewHolder, 1)
-        googlePayViewHolder.itemView.performClick()
 
-        assertThat(paymentSelections)
-            .containsExactly(PaymentSelection.GooglePay)
+        assertThat(googlePayViewHolder.itemView.isEnabled)
+            .isFalse()
+
+        val addCardViewHolder = adapter.onCreateViewHolder(
+            FrameLayout(context),
+            adapter.getItemViewType(0)
+        )
+        adapter.onBindViewHolder(addCardViewHolder, 0)
+
+        assertThat(addCardViewHolder.itemView.isEnabled)
+            .isFalse()
+
+        val cardViewHolder = adapter.createViewHolder(
+            FrameLayout(context),
+            adapter.getItemViewType(3)
+        )
+        adapter.onBindViewHolder(cardViewHolder, 3)
+
+        assertThat(cardViewHolder.itemView.isEnabled)
+            .isFalse()
     }
 
     @Test
-    fun `set defaultPaymentMethodId and then paymentMethods should sort and invoke paymentMethodSelectedListener`() {
-        val paymentMethods = PaymentMethodFixtures.createCards(10)
-        val adapter = createAdapter()
-
-        adapter.defaultPaymentMethodId = paymentMethods.last().id
-        adapter.paymentMethods = paymentMethods
-        assertThat(adapter.paymentMethods.first())
-            .isEqualTo(paymentMethods.last())
-
-        assertThat(paymentSelections)
-            .containsExactly(PaymentSelection.Saved(paymentMethods.last()))
+    fun `initial selected item should be Google Pay`() {
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = true
+            )
+        )
+        assertThat(adapter.selectedItem)
+            .isEqualTo(PaymentOptionsAdapter.Item.GooglePay)
     }
 
     @Test
-    fun `set paymentMethods and then defaultPaymentMethodId should sort and invoke paymentMethodSelectedListener`() {
-        val paymentMethods = PaymentMethodFixtures.createCards(10)
-        val adapter = createAdapter()
+    fun `initial selected item should reflect SavedSelection`() {
+        val savedPaymentMethod = CONFIG.paymentMethods[3]
+        val adapter = createAdapter().also {
+            it.update(
+                CONFIG.copy(
+                    isGooglePayReady = true,
+                    savedSelection = SavedSelection.PaymentMethod(savedPaymentMethod.id!!)
+                )
+            )
+        }
 
-        adapter.paymentMethods = paymentMethods
-        assertThat(adapter.paymentMethods.first())
-            .isEqualTo(paymentMethods.first())
-
-        adapter.defaultPaymentMethodId = paymentMethods.last().id
-        assertThat(adapter.paymentMethods.first())
-            .isEqualTo(paymentMethods.last())
-
-        assertThat(paymentSelections)
-            .containsExactly(PaymentSelection.Saved(paymentMethods.last()))
+        assertThat(adapter.selectedItem)
+            .isInstanceOf(PaymentOptionsAdapter.Item.ExistingPaymentMethod::class.java)
+        assertThat((adapter.selectedItem as PaymentOptionsAdapter.Item.ExistingPaymentMethod).paymentMethod)
+            .isEqualTo(savedPaymentMethod)
     }
 
     @Test
-    fun `set paymentMethods and then invalid defaultPaymentMethodId should not sort and not invoke paymentMethodSelectedListener`() {
-        val paymentMethods = PaymentMethodFixtures.createCards(10)
-        val adapter = createAdapter()
-        adapter.paymentMethods = paymentMethods
-        adapter.defaultPaymentMethodId = "invalid"
-        assertThat(adapter.paymentMethods.first())
-            .isEqualTo(paymentMethods.first())
-        assertThat(paymentSelections)
-            .isEmpty()
+    fun `initial selected item should reflect PaymentSelection`() {
+        val savedPaymentMethod = CONFIG.paymentMethods[2]
+        val selectedPaymentMethod = CONFIG.paymentMethods[3]
+        val adapter = createAdapter().also {
+            it.update(
+                CONFIG.copy(
+                    isGooglePayReady = true,
+                    savedSelection = SavedSelection.PaymentMethod(savedPaymentMethod.id!!)
+                ),
+                PaymentSelection.Saved(selectedPaymentMethod)
+            )
+        }
+
+        assertThat(adapter.selectedItem)
+            .isInstanceOf(PaymentOptionsAdapter.Item.ExistingPaymentMethod::class.java)
+        assertThat((adapter.selectedItem as PaymentOptionsAdapter.Item.ExistingPaymentMethod).paymentMethod)
+            .isEqualTo(selectedPaymentMethod)
+    }
+
+    @Test
+    fun `initial selected item should fallback to config when invalid PaymentSelection`() {
+        val savedPaymentMethod = CONFIG.paymentMethods[2]
+        val selectedPaymentMethod = PaymentMethodFixtures.createCards(1).first()
+        val adapter = createAdapter().also {
+            it.update(
+                CONFIG.copy(
+                    isGooglePayReady = true,
+                    savedSelection = SavedSelection.PaymentMethod(savedPaymentMethod.id!!)
+                ),
+                PaymentSelection.Saved(selectedPaymentMethod)
+            )
+        }
+
+        assertThat(adapter.selectedItem)
+            .isInstanceOf(PaymentOptionsAdapter.Item.ExistingPaymentMethod::class.java)
+        assertThat((adapter.selectedItem as PaymentOptionsAdapter.Item.ExistingPaymentMethod).paymentMethod)
+            .isEqualTo(savedPaymentMethod)
+    }
+
+    @Test
+    fun `initial selected item should be null when the only item is AddCard`() {
+        val adapter = createConfiguredAdapter(
+            CONFIG.copy(
+                isGooglePayReady = false,
+                paymentMethods = emptyList()
+            )
+        )
+        assertThat(adapter.itemCount)
+            .isEqualTo(1)
+        assertThat(adapter.selectedItem)
+            .isNull()
     }
 
     private fun createConfiguredAdapter(
-        shouldShowGooglePay: Boolean,
-        paymentMethodsCount: Int = 6
+        fragmentConfig: FragmentConfig = CONFIG
     ): PaymentOptionsAdapter {
         return createAdapter().also {
-            it.shouldShowGooglePay = shouldShowGooglePay
-            it.paymentMethods = PaymentMethodFixtures.createCards(paymentMethodsCount)
+            it.update(fragmentConfig)
         }
     }
 
     private fun createAdapter(): PaymentOptionsAdapter {
         return PaymentOptionsAdapter(
-            paymentSelection = null,
+            canClickSelectedItem = false,
             paymentOptionSelectedListener = { paymentSelection, _ ->
                 paymentSelections.add(paymentSelection)
             },
             addCardClickListener = {
                 addCardClicks++
             }
+        )
+    }
+
+    private companion object {
+        private val CONFIG = FragmentConfigFixtures.DEFAULT.copy(
+            paymentMethods = PaymentMethodFixtures.createCards(6)
         )
     }
 }

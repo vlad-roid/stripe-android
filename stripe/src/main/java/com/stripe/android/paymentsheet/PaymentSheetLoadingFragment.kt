@@ -6,4 +6,4 @@ import com.stripe.android.R
 /**
  * A `Fragment` that shows a progress indicator.
  */
-internal class PaymentSheetLoadingFragment : Fragment(R.layout.fragment_payment_sheet_loading)
+internal class PaymentSheetLoadingFragment : Fragment(R.layout.fragment_paymentsheet_loading)

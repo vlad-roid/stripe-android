@@ -64,6 +64,15 @@ open class CvcEditText @JvmOverloads constructor(
                 completionCallback()
             }
         }
+
+        internalFocusChangeListeners.add { _, hasFocus ->
+            if (!hasFocus && unvalidatedCvc.isPartialEntry(cardBrand.maxCvcLength)) {
+                // TODO (michelleb-stripe) Should set error message to incomplete
+                shouldShowError = true
+            }
+        }
+
+        layoutDirection = LAYOUT_DIRECTION_LTR
     }
 
     override val accessibilityText: String?
@@ -74,6 +83,7 @@ open class CvcEditText @JvmOverloads constructor(
     /**
      * @param cardBrand the [CardBrand] used to update the view
      * @param customHintText optional user-specified hint text
+     * @param customPlaceholderText optional user-specified placeholder text
      * @param textInputLayout if specified, hint text will be set on this [TextInputLayout]
      * instead of directly on the [CvcEditText]
      */
@@ -81,6 +91,7 @@ open class CvcEditText @JvmOverloads constructor(
     internal fun updateBrand(
         cardBrand: CardBrand,
         customHintText: String? = null,
+        customPlaceholderText: String? = null,
         textInputLayout: TextInputLayout? = null
     ) {
         this.cardBrand = cardBrand
@@ -93,15 +104,23 @@ open class CvcEditText @JvmOverloads constructor(
                 resources.getString(R.string.cvc_number_hint)
             }
 
+        // Only show an error when we update the branch if text is entered
+        // and the Cvc does not validate
+        if (unvalidatedCvc.normalized.isNotEmpty()) {
+            shouldShowError = unvalidatedCvc.validate(cardBrand.maxCvcLength) == null
+            // TODO(michelleb-stripe): Should truncate CVC on a brand name change.
+        }
+
         if (textInputLayout != null) {
             textInputLayout.hint = hintText
 
-            textInputLayout.placeholderText = resources.getString(
-                when (cardBrand) {
-                    CardBrand.AmericanExpress -> R.string.cvc_multiline_helper_amex
-                    else -> R.string.cvc_multiline_helper
-                }
-            )
+            textInputLayout.placeholderText = customPlaceholderText
+                ?: resources.getString(
+                    when (cardBrand) {
+                        CardBrand.AmericanExpress -> R.string.cvc_multiline_helper_amex
+                        else -> R.string.cvc_multiline_helper
+                    }
+                )
         } else {
             this.hint = hintText
         }

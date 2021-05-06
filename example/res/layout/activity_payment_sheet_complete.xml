@@ -9,9 +9,9 @@
         android:orientation="vertical"
         android:padding="12dp">
 
-        <ProgressBar
+        <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progress_bar"
-            style="?android:attr/progressBarStyleHorizontal"
+            style="@style/Widget.MaterialComponents.LinearProgressIndicator"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:indeterminate="true"
@@ -30,15 +30,7 @@
                 android:enabled="true"
                 android:text="Launch Complete" />
 
-            <Button
-                android:id="@+id/clear"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Clear Secrets"/>
-
         </LinearLayout>
-
-
 
         <TextView
             android:id="@+id/status"

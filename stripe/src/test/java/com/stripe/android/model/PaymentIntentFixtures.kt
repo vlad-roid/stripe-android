@@ -8,6 +8,35 @@ internal object PaymentIntentFixtures {
 
     const val KEY_ID = "7c4debe3f4af7f9d1569a2ffea4343c2566826ee"
 
+    private val PI_SUCCEEDED_JSON = JSONObject(
+        """
+        {
+            "id": "pi_1IRg6VCRMbs6F",
+            "object": "payment_intent",
+            "amount": 1099,
+            "canceled_at": null,
+            "cancellation_reason": null,
+            "capture_method": "automatic",
+            "client_secret": "pi_1IRg6VCRMbs6F_secret_7oH5g4v8GaCrHfsGYS6kiSnwF",
+            "confirmation_method": "automatic",
+            "created": 1614960135,
+            "currency": "usd",
+            "description": "Example PaymentIntent",
+            "last_payment_error": null,
+            "livemode": false,
+            "next_action": null,
+            "payment_method": "pm_1IJs3ZCRMbs",
+            "payment_method_types": ["card"],
+            "receipt_email": null,
+            "setup_future_usage": null,
+            "shipping": null,
+            "source": null,
+            "status": "succeeded"
+        }
+        """.trimIndent()
+    )
+    val PI_SUCCEEDED = requireNotNull(PARSER.parse(PI_SUCCEEDED_JSON))
+
     val PI_REQUIRES_MASTERCARD_3DS2_JSON = JSONObject(
         """
         {
@@ -687,31 +716,50 @@ internal object PaymentIntentFixtures {
     val OXXO_REQUIRES_ACTION_JSON = JSONObject(
         """
         {
-            "id": "pi_1Ga0nFLYnbCF8",
+            "id": "pi_1IcuwoL32KlRo",
             "object": "payment_intent",
-            "amount": 1000,
+            "amount": 1099,
             "canceled_at": null,
             "cancellation_reason": null,
             "capture_method": "automatic",
-            "client_secret": "pi_1Ga0nFLYnbCF8_secret_Vd75bObmsTyGR4k",
+            "client_secret": "pi_1IcuwoL32KlRo_secret_KC0YoHfna465TDVW",
             "confirmation_method": "automatic",
-            "created": 1587393617,
+            "created": 1617638802,
             "currency": "mxn",
-            "description": null,
+            "description": "Example PaymentIntent",
             "last_payment_error": null,
             "livemode": false,
             "next_action": {
-                "display_oxxo_details": {
-                    "expires_after": 1587704399,
-                    "number": "12345678901234657890123456789012",
-                    "hosted_voucher_url": "https://payments.stripe.com/oxxo/voucher/vchr_test_YWNjdF8xR1hhNUZIU0wxMEo5d3F2LHZjaHJfSGJIOGVMYmNmQlkyMUJ5OU1WTU5uMVYxdDNta1Q2RQ0000gtenGCef"
+                "oxxo_display_details": {
+                    "expires_after": 1617944399,
+                    "hosted_voucher_url": "https:\/\/payments.stripe.com\/oxxo\/voucher\/test_YWNjdF8xSWN1c1VMMzJLbFJvdDAxLF9KRlBtckVBMERWM0lBZEUyb",
+                    "number": "12345678901234657890123456789012"
                 },
-                "type": "display_oxxo_details"
+                "type": "oxxo_display_details"
             },
-            "payment_method": "pm_1Ga11MLYnbC",
-            "payment_method_types": [
-                "oxxo"
-            ],
+            "payment_method": {
+                "id": "pm_1IcuwoL32KlRot01",
+                "object": "payment_method",
+                "billing_details": {
+                    "address": {
+                        "city": null,
+                        "country": null,
+                        "line1": null,
+                        "line2": null,
+                        "postal_code": null,
+                        "state": null
+                    },
+                    "email": "jrosen@example.com",
+                    "name": "Jenny Rosen",
+                    "phone": null
+                },
+                "created": 1617638802,
+                "customer": null,
+                "livemode": false,
+                "oxxo": {},
+                "type": "oxxo"
+            },
+            "payment_method_types": ["card", "oxxo"],
             "receipt_email": null,
             "setup_future_usage": null,
             "shipping": null,
@@ -720,7 +768,7 @@ internal object PaymentIntentFixtures {
         }
         """.trimIndent()
     )
-    val OXXO_REQUIES_ACTION = PARSER.parse(OXXO_REQUIRES_ACTION_JSON)!!
+    val OXXO_REQUIES_ACTION = requireNotNull(PARSER.parse(OXXO_REQUIRES_ACTION_JSON))
 
     val ALIPAY_REQUIRES_ACTION_JSON = JSONObject(
         """
@@ -843,4 +891,140 @@ internal object PaymentIntentFixtures {
     )
 
     val ALIPAY_TEST_MODE = PARSER.parse(ALIPAY_TEST_MODE_JSON)!!
+
+    val PI_REQUIRES_BLIK_AUTHORIZE_JSON = JSONObject(
+        """
+        {
+          "id": "pi_1IVmwXFY0qyl6XeWwxGWA04D",
+          "object": "payment_intent",
+          "amount": 1099,
+          "amount_capturable": 0,
+          "amount_received": 0,
+          "amount_subtotal": 1099,
+          "application": null,
+          "application_fee_amount": null,
+          "canceled_at": null,
+          "cancellation_reason": null,
+          "capture_method": "automatic",
+          "charges": {
+            "object": "list",
+            "data": [
+        
+            ],
+            "has_more": false,
+            "total_count": 0,
+            "url": "/v1/charges?payment_intent=pi_1IVmwXFY0qyl6XeWwxGWA04D"
+          },
+          "client_secret": "pi_1IVmwXFY0qyl6XeWwxGWA04D_secret_4U8cSCdPefr8LHtPsKvA3mcQz",
+          "confirmation_method": "automatic",
+          "created": 1615939737,
+          "currency": "pln",
+          "customer": null,
+          "description": null,
+          "invoice": null,
+          "last_payment_error": null,
+          "livemode": false,
+          "metadata": {
+          },
+          "next_action": {
+            "type": "blik_authorize"
+          },
+          "on_behalf_of": null,
+          "payment_method": "pm_1IVnI3FY0qyl6XeWxJFdBh2g",
+          "payment_method_options": {
+            "blik": {
+            }
+          },
+          "payment_method_types": [
+            "blik"
+          ],
+          "receipt_email": null,
+          "review": null,
+          "setup_future_usage": null,
+          "shipping": null,
+          "source": null,
+          "statement_descriptor": null,
+          "statement_descriptor_suffix": null,
+          "status": "requires_action",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_tax": 0
+          },
+          "transfer_data": null,
+          "transfer_group": null
+        }
+        """.trimIndent()
+    )
+
+    val PI_REQUIRES_BLIK_AUTHORIZE = PARSER.parse(PI_REQUIRES_BLIK_AUTHORIZE_JSON)!!
+
+    private val PI_REQUIRES_WECHAT_PAY_AUTHORIZE_JSON = JSONObject(
+        """
+        {
+          "id": "pi_1IlJH7BNJ02ErVOjm37T3OUt",
+          "object": "payment_intent",
+          "amount": 1099,
+          "amount_capturable": 0,
+          "amount_received": 0,
+          "application": null,
+          "application_fee_amount": null,
+          "canceled_at": null,
+          "cancellation_reason": null,
+          "capture_method": "automatic",
+          "charges": {
+            "object": "list",
+            "data": [
+        
+            ],
+            "has_more": false,
+            "total_count": 0,
+            "url": "/v1/charges?payment_intent=pi_1IlJH7BNJ02ErVOjm37T3OUt"
+          },
+          "client_secret": "pi_1IlJH7BNJ02ErVOjm37T3OUt_secret_vgMExmjvESdtPqddHOSSSDip2",
+          "confirmation_method": "automatic",
+          "created": 1619638941,
+          "currency": "usd",
+          "customer": null,
+          "description": null,
+          "invoice": null,
+          "last_payment_error": null,
+          "livemode": false,
+          "metadata": {
+          },
+          "next_action": {
+            "type": "wechat_pay_redirect_to_android_app",
+            "wechat_pay_redirect_to_android_app": {
+              "app_id": "wx65997d6307c3827d",
+              "nonce_str": "some_random_string",
+              "package": "Sign=WXPay",
+              "partner_id": "wx65997d6307c3827d",
+              "prepay_id": "test_transaction",
+              "sign": "8B26124BABC816D7140034DDDC7D3B2F1036CCB2D910E52592687F6A44790D5E",
+              "timestamp": "1619638941"
+            }
+          },
+          "on_behalf_of": null,
+          "payment_method": "pm_1IlJH7BNJ02ErVOjxKQu1wfH",
+          "payment_method_options": {
+            "wechat_pay": {
+            }
+          },
+          "payment_method_types": [
+            "wechat_pay"
+          ],
+          "receipt_email": null,
+          "review": null,
+          "setup_future_usage": null,
+          "shipping": null,
+          "source": null,
+          "statement_descriptor": null,
+          "statement_descriptor_suffix": null,
+          "status": "requires_action",
+          "transfer_data": null,
+          "transfer_group": null
+        }
+        """.trimIndent()
+    )
+
+    val PI_REQUIRES_WECHAT_PAY_AUTHORIZE = PARSER.parse(PI_REQUIRES_WECHAT_PAY_AUTHORIZE_JSON)!!
 }

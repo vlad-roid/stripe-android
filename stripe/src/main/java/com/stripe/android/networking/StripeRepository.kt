@@ -6,11 +6,11 @@ import com.stripe.android.exception.APIException
 import com.stripe.android.exception.AuthenticationException
 import com.stripe.android.exception.CardException
 import com.stripe.android.exception.InvalidRequestException
+import com.stripe.android.model.BankStatuses
 import com.stripe.android.model.CardMetadata
 import com.stripe.android.model.ConfirmPaymentIntentParams
 import com.stripe.android.model.ConfirmSetupIntentParams
 import com.stripe.android.model.Customer
-import com.stripe.android.model.FpxBankStatuses
 import com.stripe.android.model.ListPaymentMethodsParams
 import com.stripe.android.model.PaymentIntent
 import com.stripe.android.model.PaymentMethod
@@ -281,7 +281,7 @@ internal interface StripeRepository {
         cardId: String,
         verificationId: String,
         userOneTimeCode: String,
-        ephemeralKeySecret: String
+        requestOptions: ApiRequest.Options
     ): String?
 
     @Throws(
@@ -296,10 +296,10 @@ internal interface StripeRepository {
         newPin: String,
         verificationId: String,
         userOneTimeCode: String,
-        ephemeralKeySecret: String
+        requestOptions: ApiRequest.Options
     )
 
-    suspend fun getFpxBankStatus(options: ApiRequest.Options): FpxBankStatuses
+    suspend fun getFpxBankStatus(options: ApiRequest.Options): BankStatuses
 
     suspend fun getCardMetadata(bin: Bin, options: ApiRequest.Options): CardMetadata?
 

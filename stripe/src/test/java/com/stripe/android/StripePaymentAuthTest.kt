@@ -5,39 +5,52 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import com.nhaarman.mockitokotlin2.KArgumentCaptor
-import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.eq
+import com.nhaarman.mockitokotlin2.isA
 import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.stripe.android.exception.InvalidRequestException
 import com.stripe.android.model.ConfirmPaymentIntentParams
 import com.stripe.android.model.ConfirmSetupIntentParams
 import com.stripe.android.model.PaymentIntentFixtures
 import com.stripe.android.model.SetupIntentFixtures
-import com.stripe.android.model.StripeIntent
+import com.stripe.android.model.Source
 import com.stripe.android.networking.ApiRequest
-import com.stripe.android.networking.ApiRequestExecutor
+import com.stripe.android.networking.DefaultApiRequestExecutor
 import com.stripe.android.networking.StripeApiRepository
+import com.stripe.android.utils.TestUtils.idleLooper
 import com.stripe.android.view.AuthActivityStarter
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestCoroutineDispatcher
+import kotlinx.coroutines.test.runBlockingTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
-class StripePaymentAuthTest {
+internal class StripePaymentAuthTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val testDispatcher = TestCoroutineDispatcher()
 
     private val activity: Activity = mock()
     private val paymentController: PaymentController = mock()
     private val paymentCallback: ApiResultCallback<PaymentIntentResult> = mock()
     private val setupCallback: ApiResultCallback<SetupIntentResult> = mock()
+    private val sourceCallback: ApiResultCallback<Source> = mock()
     private val hostArgumentCaptor: KArgumentCaptor<AuthActivityStarter.Host> = argumentCaptor()
 
+    @AfterTest
+    fun cleanup() {
+        testDispatcher.cleanupTestCoroutines()
+    }
+
     @Test
-    fun confirmPayment_shouldConfirmAndAuth() {
+    fun confirmPayment_shouldConfirmAndAuth() = testDispatcher.runBlockingTest {
         val stripe = createStripe()
         val confirmPaymentIntentParams = ConfirmPaymentIntentParams.createWithPaymentMethodId(
             "pm_card_threeDSecure2Required",
@@ -54,12 +67,11 @@ class StripePaymentAuthTest {
     }
 
     @Test
-    fun confirmSetupIntent_shouldConfirmAndAuth() {
+    fun confirmSetupIntent_shouldConfirmAndAuth() = testDispatcher.runBlockingTest {
         val stripe = createStripe()
         val confirmSetupIntentParams = ConfirmSetupIntentParams.create(
             "pm_card_threeDSecure2Required",
-            "client_secret",
-            "yourapp://post-authentication-return-url"
+            "client_secret"
         )
         stripe.confirmSetupIntent(activity, confirmSetupIntentParams)
         verify(paymentController).startConfirmAndAuth(
@@ -71,7 +83,7 @@ class StripePaymentAuthTest {
     }
 
     @Test
-    fun authenticatePayment_shouldAuth() {
+    fun authenticatePayment_shouldAuth() = testDispatcher.runBlockingTest {
         val stripe = createStripe()
         val clientSecret =
             requireNotNull(PaymentIntentFixtures.PI_REQUIRES_MASTERCARD_3DS2.clientSecret)
@@ -86,7 +98,7 @@ class StripePaymentAuthTest {
     }
 
     @Test
-    fun handleNextActionForSetupIntent_shouldStartAuth() {
+    fun handleNextActionForSetupIntent_shouldStartAuth() = testDispatcher.runBlockingTest {
         val stripe = createStripe()
         val clientSecret =
             requireNotNull(SetupIntentFixtures.SI_NEXT_ACTION_REDIRECT.clientSecret)
@@ -101,98 +113,175 @@ class StripePaymentAuthTest {
     }
 
     @Test
-    fun onPaymentResult_whenShouldHandleResultIsTrue_shouldCallHandleResult() {
-        val data = Intent()
-        whenever(
-            paymentController.shouldHandlePaymentResult(
+    fun onPaymentResult_whenShouldHandleResultAndControllerReturnsCorrectResult_shouldGetCorrectResult() =
+        testDispatcher.runBlockingTest {
+            val data = Intent()
+            val result = mock<PaymentIntentResult>()
+            whenever(
+                paymentController.shouldHandlePaymentResult(
+                    StripePaymentController.PAYMENT_REQUEST_CODE,
+                    data
+                )
+            ).thenReturn(true)
+            whenever(
+                paymentController.getPaymentIntentResult(
+                    data
+                )
+            ).thenReturn(result)
+
+            val stripe = createStripe()
+            stripe.onPaymentResult(
                 StripePaymentController.PAYMENT_REQUEST_CODE,
-                data
+                data,
+                callback = paymentCallback
             )
-        ).thenReturn(true)
 
-        val stripe = createStripe()
-        stripe.onPaymentResult(
-            StripePaymentController.PAYMENT_REQUEST_CODE,
-            data,
-            callback = paymentCallback
-        )
+            idleLooper()
 
-        verify(paymentController).handlePaymentResult(data, paymentCallback)
-    }
-
-    @Test
-    fun onSetupResult_whenShouldHandleResultIsTrue_shouldCallHandleResult() {
-        val data = Intent()
-        whenever(
-            paymentController.shouldHandleSetupResult(
-                StripePaymentController.SETUP_REQUEST_CODE,
-                data
-            )
-        ).thenReturn(true)
-
-        val stripe = createStripe()
-        stripe.onSetupResult(
-            StripePaymentController.SETUP_REQUEST_CODE,
-            data,
-            callback = setupCallback
-        )
-
-        verify(paymentController).handleSetupResult(data, setupCallback)
-    }
-
-    @Test
-    fun confirmAlipayPayment_shouldConfirmAndAuth() {
-        val authenticationCallbackCaptor: KArgumentCaptor<ApiResultCallback<StripeIntent>> = argumentCaptor()
-
-        val stripe = createStripe()
-        val confirmPaymentIntentParams = ConfirmPaymentIntentParams.createAlipay(
-            "client_secret"
-        )
-        val authenticationHandler = object : AlipayAuthenticator {
-            override fun onAuthenticationRequest(data: String): Map<String, String> {
-                return mapOf("resultStatus" to "9000")
-            }
+            verify(paymentCallback).onSuccess(result)
         }
-        stripe.confirmAlipayPayment(
-            confirmPaymentIntentParams,
-            authenticator = authenticationHandler,
-            callback = paymentCallback
-        )
-        verify(paymentController).startConfirm(
-            eq(confirmPaymentIntentParams),
-            eq(REQUEST_OPTIONS),
-            authenticationCallbackCaptor.capture()
-        )
-        val authenticationCallback = authenticationCallbackCaptor.firstValue
 
-        // passes through errors
-        verify(paymentCallback, never()).onError(any())
-        val e = RuntimeException()
-        authenticationCallback.onError(e)
-        verify(paymentCallback).onError(e)
+    @Test
+    fun onPaymentResult_whenShouldHandleResultAndControllerReturnsNull_shouldThrowException() =
+        testDispatcher.runBlockingTest {
+            val data = Intent()
+            whenever(
+                paymentController.shouldHandlePaymentResult(
+                    StripePaymentController.PAYMENT_REQUEST_CODE,
+                    data
+                )
+            ).thenReturn(true)
+            whenever(
+                paymentController.getPaymentIntentResult(
+                    data
+                )
+            ).thenReturn(null)
 
-        // handles authentication
-        val confirmedIntent = PaymentIntentFixtures.ALIPAY_REQUIRES_ACTION
-        authenticationCallback.onSuccess(confirmedIntent)
-        verify(paymentController).authenticateAlipay(
-            confirmedIntent,
-            null,
-            authenticationHandler,
-            paymentCallback
-        )
-    }
+            val stripe = createStripe()
+            stripe.onPaymentResult(
+                StripePaymentController.PAYMENT_REQUEST_CODE,
+                data,
+                callback = paymentCallback
+            )
+
+            idleLooper()
+
+            verify(paymentCallback).onError(isA<InvalidRequestException>())
+        }
+
+    @Test
+    fun onSetupResult_whenShouldHandleResultAndControllerReturnsCorrectResult_shouldGetCorrectResult() =
+        testDispatcher.runBlockingTest {
+            val data = Intent()
+            val result = mock<SetupIntentResult>()
+            whenever(
+                paymentController.shouldHandleSetupResult(
+                    StripePaymentController.SETUP_REQUEST_CODE,
+                    data
+                )
+            ).thenReturn(true)
+            whenever(
+                paymentController.getSetupIntentResult(
+                    data
+                )
+            ).thenReturn(result)
+
+            val stripe = createStripe()
+            stripe.onSetupResult(
+                StripePaymentController.SETUP_REQUEST_CODE,
+                data,
+                callback = setupCallback
+            )
+
+            idleLooper()
+            verify(setupCallback).onSuccess(result)
+        }
+
+    @Test
+    fun onSetupResult_whenShouldHandleResultAndControllerReturnsNull_shouldThrowException() =
+        testDispatcher.runBlockingTest {
+            val data = Intent()
+            whenever(
+                paymentController.shouldHandleSetupResult(
+                    StripePaymentController.SETUP_REQUEST_CODE,
+                    data
+                )
+            ).thenReturn(true)
+            whenever(
+                paymentController.getSetupIntentResult(
+                    data
+                )
+            ).thenReturn(null)
+
+            val stripe = createStripe()
+            stripe.onSetupResult(
+                StripePaymentController.SETUP_REQUEST_CODE,
+                data,
+                callback = setupCallback
+            )
+
+            idleLooper()
+
+            verify(setupCallback).onError(isA<InvalidRequestException>())
+        }
+
+    @Test
+    fun onAuthenticateSourceResult_whenControllerReturnsCorrectResult_shouldGetCorrectResult() =
+        testDispatcher.runBlockingTest {
+            val result = mock<Source>()
+            val data = Intent()
+            whenever(
+                paymentController.getAuthenticateSourceResult(
+                    data
+                )
+            ).thenReturn(result)
+
+            val stripe = createStripe()
+            stripe.onAuthenticateSourceResult(
+                data,
+                callback = sourceCallback
+            )
+
+            idleLooper()
+
+            verify(sourceCallback).onSuccess(result)
+        }
+
+    @Test
+    fun onAuthenticateSourceResult_whenControllerReturnsNull_shouldThrowException() =
+        testDispatcher.runBlockingTest {
+            val data = Intent()
+            whenever(
+                paymentController.getAuthenticateSourceResult(
+                    data
+                )
+            ).thenReturn(null)
+
+            val stripe = createStripe()
+            stripe.onAuthenticateSourceResult(
+                data,
+                callback = sourceCallback
+            )
+
+            idleLooper()
+
+            verify(sourceCallback).onError(isA<InvalidRequestException>())
+        }
 
     private fun createStripe(): Stripe {
         return Stripe(
             StripeApiRepository(
                 context,
                 ApiKeyFixtures.FAKE_PUBLISHABLE_KEY,
-                stripeApiRequestExecutor = ApiRequestExecutor.Default(),
+                stripeApiRequestExecutor = DefaultApiRequestExecutor(
+                    workContext = testDispatcher
+                ),
                 analyticsRequestExecutor = {}
             ),
             paymentController,
             ApiKeyFixtures.FAKE_PUBLISHABLE_KEY,
-            null
+            null,
+            testDispatcher
         )
     }
 

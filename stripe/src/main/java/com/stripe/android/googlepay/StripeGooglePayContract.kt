@@ -4,16 +4,19 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Parcel
+import android.os.Parcelable
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.annotation.ColorInt
+import androidx.core.os.bundleOf
+import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.common.api.Status
-import com.stripe.android.PaymentIntentResult
+import com.stripe.android.R
 import com.stripe.android.model.PaymentIntent
 import com.stripe.android.model.PaymentMethod
 import com.stripe.android.model.ShippingInformation
 import com.stripe.android.view.ActivityStarter
 import kotlinx.parcelize.Parceler
 import kotlinx.parcelize.Parcelize
-import java.lang.IllegalStateException
 
 internal class StripeGooglePayContract :
     ActivityResultContract<StripeGooglePayContract.Args, StripeGooglePayContract.Result>() {
@@ -33,11 +36,28 @@ internal class StripeGooglePayContract :
         return Result.fromIntent(intent)
     }
 
+    /**
+     * Args to start [StripeGooglePayActivity] and collect payment data. If successful, the
+     * result will be returned through [Result.PaymentData].
+     */
     @Parcelize
     data class Args(
-        internal var environment: StripeGooglePayEnvironment,
+        var paymentIntent: PaymentIntent,
+        var config: GooglePayConfig,
+        @ColorInt val statusBarColor: Int?
+    ) : ActivityStarter.Args {
 
-        internal var paymentIntent: PaymentIntent,
+        companion object {
+            @JvmSynthetic
+            internal fun create(intent: Intent): Args? {
+                return intent.getParcelableExtra(ActivityStarter.Args.EXTRA)
+            }
+        }
+    }
+
+    @Parcelize
+    data class GooglePayConfig(
+        var environment: StripeGooglePayEnvironment,
 
         /**
          * ISO 3166-1 alpha-2 country code where the transaction is processed.
@@ -50,21 +70,11 @@ internal class StripeGooglePayContract :
         internal var isEmailRequired: Boolean = false,
 
         internal var merchantName: String? = null
-    ) : ActivityStarter.Args {
-
-        companion object {
-            @JvmSynthetic
-            internal fun create(intent: Intent): Args {
-                return requireNotNull(intent.getParcelableExtra(ActivityStarter.Args.EXTRA))
-            }
-        }
-    }
+    ) : Parcelable
 
     sealed class Result : ActivityStarter.Result {
         override fun toBundle(): Bundle {
-            return Bundle().also {
-                it.putParcelable(ActivityStarter.Result.EXTRA, this)
-            }
+            return bundleOf(ActivityStarter.Result.EXTRA to this)
         }
 
         @Parcelize
@@ -89,9 +99,13 @@ internal class StripeGooglePayContract :
             }
         }
 
+        /**
+         * See [Args.PaymentData]
+         */
         @Parcelize
-        class PaymentIntent(
-            val paymentIntentResult: PaymentIntentResult
+        data class PaymentData(
+            val paymentMethod: PaymentMethod,
+            val shippingInformation: ShippingInformation?
         ) : Result()
 
         @Parcelize
@@ -112,6 +126,34 @@ internal class StripeGooglePayContract :
                         "Error while processing result from Google Pay."
                     )
                 )
+            }
+        }
+    }
+}
+
+internal fun Status.getErrorResourceID(): Int? {
+    return when (this) {
+        Status.RESULT_SUCCESS -> null
+        Status.RESULT_INTERNAL_ERROR, Status.RESULT_CANCELED, Status.RESULT_DEAD_CLIENT -> R.string.stripe_google_pay_error_internal
+        else -> {
+            when (this.statusCode) {
+                CommonStatusCodes.API_NOT_CONNECTED, // "The client attempted to call a method from an API that failed to connect."
+                CommonStatusCodes.CANCELED, // -> "The result was canceled either due to client disconnect or PendingResult.cancel()."
+                CommonStatusCodes.DEVELOPER_ERROR, // -> "The application is misconfigured."
+                CommonStatusCodes.ERROR, // -> "The operation failed with no more detailed information."
+                CommonStatusCodes.INTERRUPTED, // -> "A blocking call was interrupted while waiting and did not run to completion."
+                CommonStatusCodes.INVALID_ACCOUNT, // -> "The client attempted to connect to the service with an invalid account name specified."
+                CommonStatusCodes.SERVICE_DISABLED, // -> "This constant is deprecated. This case handled during connection, not during API requests. No results should be returned with this status code."
+                CommonStatusCodes.SERVICE_VERSION_UPDATE_REQUIRED, // -> " This constant is deprecated.This case handled during connection, not during API requests . No results should be returned with this status code."
+                CommonStatusCodes.SUCCESS, // -> "The operation was successful.SUCCESS_CACHE The operation was successful, but was used the device's cache."
+                CommonStatusCodes.INTERNAL_ERROR -> R.string.stripe_google_pay_error_internal
+                CommonStatusCodes.RESOLUTION_REQUIRED -> R.string.stripe_google_pay_error_resolution_required
+                CommonStatusCodes.NETWORK_ERROR -> R.string.stripe_failure_connection_error
+                CommonStatusCodes.SIGN_IN_REQUIRED -> R.string.stripe_failure_reason_authentication
+                CommonStatusCodes.TIMEOUT -> R.string.stripe_failure_reason_timed_out
+                else -> {
+                    R.string.stripe_google_pay_error_internal
+                }
             }
         }
     }

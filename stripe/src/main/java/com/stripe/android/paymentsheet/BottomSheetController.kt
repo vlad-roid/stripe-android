@@ -1,65 +1,56 @@
 package com.stripe.android.paymentsheet
 
 import android.view.View
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.lifecycle.LiveData
+import android.view.ViewGroup
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.distinctUntilChanged
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.stripe.android.paymentsheet.ui.SheetMode
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 internal class BottomSheetController(
-    private val bottomSheetBehavior: BottomSheetBehavior<ConstraintLayout>,
-    private val sheetModeLiveData: LiveData<SheetMode>,
-    private val lifecycleScope: CoroutineScope
+    private val bottomSheetBehavior: BottomSheetBehavior<ViewGroup>
 ) {
     private val _shouldFinish = MutableLiveData(false)
     internal val shouldFinish = _shouldFinish.distinctUntilChanged()
 
     fun setup() {
-        bottomSheetBehavior.peekHeight = BottomSheetBehavior.PEEK_HEIGHT_AUTO
         bottomSheetBehavior.isHideable = true
-        // Start hidden and then animate in after delay
+        bottomSheetBehavior.isDraggable = false
         bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+        bottomSheetBehavior.saveFlags = BottomSheetBehavior.SAVE_ALL
 
-        lifecycleScope.launch {
-            delay(ANIMATE_IN_DELAY)
-            bottomSheetBehavior.state = sheetModeLiveData.value?.behaviourState ?: BottomSheetBehavior.STATE_EXPANDED
-            bottomSheetBehavior.addBottomSheetCallback(
-                object : BottomSheetBehavior.BottomSheetCallback() {
-                    override fun onSlide(bottomSheet: View, slideOffset: Float) {
-                    }
+        bottomSheetBehavior.addBottomSheetCallback(
+            object : BottomSheetBehavior.BottomSheetCallback() {
+                override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                }
 
-                    override fun onStateChanged(bottomSheet: View, newState: Int) {
-                        if (newState == BottomSheetBehavior.STATE_HIDDEN) {
+                override fun onStateChanged(bottomSheet: View, newState: Int) {
+                    when (newState) {
+                        BottomSheetBehavior.STATE_EXPANDED -> {
+                            // isFitToContents causes conflicts when calculating the sheet position
+                            // upon resize. CoordinatorLayout will already position the sheet
+                            // correctly with gravity = bottom.
+                            bottomSheetBehavior.isFitToContents = false
+                        }
+                        BottomSheetBehavior.STATE_HIDDEN -> {
+                            // finish the activity only after the bottom sheet's state has
+                            // transitioned to `BottomSheetBehavior.STATE_HIDDEN`
                             _shouldFinish.value = true
+                        }
+                        else -> {
                         }
                     }
                 }
-            )
-        }
+            }
+        )
     }
 
-    fun updateState(sheetMode: SheetMode) {
-        if (bottomSheetBehavior.state != BottomSheetBehavior.STATE_HIDDEN) {
-            bottomSheetBehavior.state = sheetMode.behaviourState
-        }
+    fun expand() {
+        bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
     fun hide() {
         // When the bottom sheet finishes animating to its new state,
         // the callback will finish the activity
         bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-    }
-
-    fun setDraggable(isDraggable: Boolean) {
-        bottomSheetBehavior.isDraggable = isDraggable
-    }
-
-    internal companion object {
-        const val ANIMATE_IN_DELAY = 300L
     }
 }

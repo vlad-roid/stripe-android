@@ -87,6 +87,8 @@
         <activity
             android:name=".activity.FpxPaymentActivity" />
         <activity
+            android:name=".activity.NetbankingListPaymentActivity" />
+        <activity
             android:name=".activity.BecsDebitPaymentMethodActivity" />
         <activity
             android:name=".activity.BacsDebitPaymentMethodActivity" />
@@ -103,7 +105,7 @@
         <activity
             android:name=".activity.NetbankingPaymentActivity" />
 
-        <activity android:name=".activity.SimplePaymentMethodConfirmationActivity" />
+        <activity android:name=".activity.SimpleConfirmationActivity" />
         <activity android:name=".activity.ConnectExampleActivity" />
 
         <activity android:name=".activity.LaunchPaymentSheetCompleteActivity" />
