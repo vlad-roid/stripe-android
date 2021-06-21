@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## 17.0.0 - unreleased
+This release includes several breaking changes. See the [migration guide](https://github.com/stripe/stripe-android/blob/master/MIGRATING.md) for more details.
+
+* [3820](https://github.com/stripe/stripe-android/pull/3820) Upgrade Kotlin to `1.5.10` and Coroutines to `1.5.0`
+
+## 16.10.0 - 2021-05-28
+* [3752](https://github.com/stripe/stripe-android/pull/3752) Support connected accounts when using Google Pay in PaymentSheet
+* [3761](https://github.com/stripe/stripe-android/pull/3761) Publish `CardFormView`
+* [3762](https://github.com/stripe/stripe-android/pull/3762) Add SetupIntent support in PaymentSheet
+* [3769](https://github.com/stripe/stripe-android/pull/3769) Upgrade Google Pay SDK to `18.1.3`
+
+## 16.9.0 - 2021-05-21
+* [3727](https://github.com/stripe/stripe-android/pull/3727) Upgrade Gradle to `7.0.2`
+* [3734](https://github.com/stripe/stripe-android/pull/3734) Upgrade `androidx.appcompat:appcompat` to `1.3.0`
+* [3735](https://github.com/stripe/stripe-android/pull/3735) Upgrade `fragment-ktx` to `1.3.4`
+* [3737](https://github.com/stripe/stripe-android/pull/3737) Add `Stripe.createRadarSession()` API binding for `/v1/radar/session`
+* [3739](https://github.com/stripe/stripe-android/pull/3739) Downgrade Kotlin from `1.5.0` to `1.4.32`
+
+## 16.8.2 - 2021-05-14
+* [3709](https://github.com/stripe/stripe-android/pull/3709) Upgrade org.jetbrains.kotlin.plugin.serialization to `1.5.0`
+* [3710](https://github.com/stripe/stripe-android/pull/3710) Upgrade kotlinx-serialization-json to `1.2.0`
+* [3711](https://github.com/stripe/stripe-android/pull/3711) Upgrade Gradle to `7.0.1`
+* [3712](https://github.com/stripe/stripe-android/pull/3712) Move PaymentSheet example into its own app
+* [3717](https://github.com/stripe/stripe-android/pull/3717) Upgrade mockito-core to `3.10.0`
+* [3721](https://github.com/stripe/stripe-android/pull/3721) Fix crash on Android 8 and 9 when opening the PaymentSheet
+* [3722](https://github.com/stripe/stripe-android/pull/3722) Upgrade Android Gradle Plugin to `4.2.1`
+
+## 16.8.0 - 2021-05-07
+This release adds a prebuilt UI.   It combines all the steps required to pay - collecting payment details and confirming the payment - into a single sheet that displays on top of your app.  See the [guide](https://stripe.com/docs/payments/accept-a-payment?platform=android) for more details.
+
+* [#3663](https://github.com/stripe/stripe-android/pull/3663) Add support for using Chrome to host a 3DS1 authentication page when Custom Tabs are not available
+* [#3677](https://github.com/stripe/stripe-android/pull/3677) Upgrade Android Gradle Plugin to `4.2.0`
+* [#3680](https://github.com/stripe/stripe-android/pull/3680) Deprecate `returnUrl` in some `ConfirmPaymentIntentParams` create() methods
+   * A custom `return_url` is not needed to return control to the app after an authentication attempt 
+* [#3681](https://github.com/stripe/stripe-android/pull/3681) Reset PaymentIntent and SetupIntent status after 3DS1 cancellation in Custom Tabs
+   * When a customer closed a 3DS1 authentication page hosted in Custom Tabs, the Intent's `status` was not reset
+     from `requires_action` to `requires_payment_method`. This is now fixed.
+* [#3685](https://github.com/stripe/stripe-android/pull/3685) Upgrade Kotlin to `1.5.0`
+* [#3687](https://github.com/stripe/stripe-android/pull/3687) Add support for PaymentSheet prebuilt UI.
+* [#3696](https://github.com/stripe/stripe-android/pull/3696) Upgrade `activity-ktx` to `1.2.3`
+
+
 ## 16.7.1 - 2021-04-29
 * [#3653](https://github.com/stripe/stripe-android/pull/3653) Support WeChat Pay for creating a `PaymentMethod` and confirming a `PaymentIntent`
     * WeChat Pay is still in beta. To enable support in API bindings, pass the `StripeApiBeta.WeChatPayV1` as an argument when instantiating a `Stripe` instance.
@@ -227,6 +269,8 @@ This release adds support for 19-digit cards in `CardInputWidget` and `CardMulti
 ## 15.0.1 - 2020-07-28
 * [#2641](https://github.com/stripe/stripe-android/pull/2641) Add support for Bank Account as source on `Customer` object
 * [#2643](https://github.com/stripe/stripe-android/pull/2643) Add missing fields to `Customer` model
+* [#2644](https://github.com/stripe/stripe-android/pull/2644) Support new directory server network names
+     * Enable support for Discover and other new networks
 * [#2646](https://github.com/stripe/stripe-android/pull/2646) Allow `CardMultilineWidget`'s `TextInputLayout`s to be styled
 * [#2649](https://github.com/stripe/stripe-android/pull/2649) Add `@JvmOverloads` to `GooglePayJsonFactory` methods
 * [#2651](https://github.com/stripe/stripe-android/pull/2651) Update Kotlin coroutines to `1.3.8`
